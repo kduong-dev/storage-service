@@ -1,0 +1,13 @@
+---
+- name: Render storage-service .env
+  vars:
+    service_environment:
+      TOKEN_SECRET: "{{ token_secret }}"
+      STORAGE_BACKEND: "FILESYSTEM"
+      STORAGE_FILESYSTEM_DIRECTORY: "/app/storage"
+      STORAGE_EVENT_LOG_FACTORY: "REDIS"
+      STORAGE_EVENT_LOG_REDIS_ADDRESS: "redis:6379"
+  template:
+    src: "{{ playbook_dir }}/templates/service.env.j2"
+    dest: backend/storage-service/.env
+    mode: '0600'
