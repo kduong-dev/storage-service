@@ -24,9 +24,9 @@ type Upload struct {
 
 // Part describes one uploaded chunk.
 type Part struct {
-	PartNumber int    `json:"part_number"`
-	Size       int64  `json:"size"`
-	Checksum   string `json:"checksum"` // hex-encoded MD5 of the part bytes
+	Number   int    `json:"part_number"`
+	Size     int64  `json:"size"`
+	Checksum string `json:"checksum"` // hex-encoded MD5 of the part bytes
 }
 
 // File is the completed, stored object produced after an upload is finalised.

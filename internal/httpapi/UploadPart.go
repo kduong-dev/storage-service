@@ -10,7 +10,7 @@ import (
 	"github.com/ansel1/merry"
 	"github.com/gorilla/mux"
 	"github.com/kduong/trading-backend/cmd/storage-service/internal/filestore"
-	"github.com/kduong/trading-backend/internal/httputil"
+	"github.com/kduong/trading-backend/internal/httpx"
 )
 
 type UploadPartResponse struct {
@@ -23,7 +23,7 @@ func (handler *Handler) UploadPart(responseWriter http.ResponseWriter, request *
 	var err error
 	defer func() {
 		if err != nil {
-			httputil.SendErrorResponse(responseWriter, err)
+			httpx.SendErrorResponse(responseWriter, err)
 		}
 	}()
 	ctx := request.Context()
@@ -52,7 +52,11 @@ func (handler *Handler) UploadPart(responseWriter http.ResponseWriter, request *
 		return
 	}
 
-	part := filestore.Part{PartNumber: partNumber, Size: size, Checksum: checksum}
+	part := filestore.Part{
+		Number:   partNumber,
+		Size:     size,
+		Checksum: checksum,
+	}
 	now := time.Now().UTC().Format(time.RFC3339)
 	if err = handler.commandHandler.RecordPart(ctx, uploadID, part, now); err != nil {
 		err = merrifyError[err]

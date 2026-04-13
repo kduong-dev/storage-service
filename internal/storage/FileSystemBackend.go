@@ -22,21 +22,21 @@ type FileSystemBackend struct {
 }
 
 func NewFileSystemBackend(root string) *FileSystemBackend {
-	for _, sub := range []string{"parts", "objects"} {
-		err := os.MkdirAll(filepath.Join(root, sub), 0o755)
+	for _, subdirectory := range []string{"parts", "objects"} {
+		err := os.MkdirAll(filepath.Join(root, subdirectory), 0o755)
 		if err != nil {
-			panic(fmt.Sprintf("storage: create subdir %s: %v", sub, err))
+			panic(fmt.Sprintf("storage: create subdir %s: %v", subdirectory, err))
 		}
 	}
 	return &FileSystemBackend{root: root}
 }
 
 func (backend *FileSystemBackend) WritePart(uploadID string, partNumber int, r io.Reader) (int64, string, error) {
-	dir := filepath.Join(backend.root, "parts", uploadID)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	directory := filepath.Join(backend.root, "parts", uploadID)
+	if err := os.MkdirAll(directory, 0o755); err != nil {
 		return 0, "", fmt.Errorf("storage: create part dir: %w", err)
 	}
-	path := filepath.Join(dir, fmt.Sprintf("%d", partNumber))
+	path := filepath.Join(directory, fmt.Sprintf("%d", partNumber))
 	f, err := os.Create(path)
 	if err != nil {
 		return 0, "", fmt.Errorf("storage: create part file: %w", err)
@@ -93,9 +93,9 @@ func (backend *FileSystemBackend) Open(fileID string) (io.ReadSeekCloser, error)
 	return f, nil
 }
 
-func (b *FileSystemBackend) DeleteParts(uploadID string) error {
-	dir := filepath.Join(b.root, "parts", uploadID)
-	if err := os.RemoveAll(dir); err != nil && !os.IsNotExist(err) {
+func (backend *FileSystemBackend) DeleteParts(uploadID string) error {
+	directory := filepath.Join(backend.root, "parts", uploadID)
+	if err := os.RemoveAll(directory); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("storage: delete parts: %w", err)
 	}
 	return nil

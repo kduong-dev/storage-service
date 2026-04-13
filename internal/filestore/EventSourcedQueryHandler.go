@@ -30,9 +30,9 @@ func NewEventSourcedQueryHandler(input NewEventSourcedQueryHandlerInput) *EventS
 	}
 }
 
-func (h *EventSourcedQueryHandler) GetUpload(ctx context.Context, uploadID string) (*Upload, error) {
-	h.catchUp(ctx)
-	upload, ok := h.uploadByID[uploadID]
+func (handler *EventSourcedQueryHandler) GetUpload(ctx context.Context, uploadID string) (*Upload, error) {
+	handler.catchUp(ctx)
+	upload, ok := handler.uploadByID[uploadID]
 	if !ok {
 		return nil, ErrUploadNotFound
 	}
@@ -43,9 +43,9 @@ func (h *EventSourcedQueryHandler) GetUpload(ctx context.Context, uploadID strin
 	return upload, nil
 }
 
-func (h *EventSourcedQueryHandler) GetFile(ctx context.Context, fileID string) (*File, error) {
-	h.catchUp(ctx)
-	file, ok := h.fileByID[fileID]
+func (handler *EventSourcedQueryHandler) GetFile(ctx context.Context, fileID string) (*File, error) {
+	handler.catchUp(ctx)
+	file, ok := handler.fileByID[fileID]
 	if !ok {
 		return nil, ErrFileNotFound
 	}
@@ -56,34 +56,34 @@ func (h *EventSourcedQueryHandler) GetFile(ctx context.Context, fileID string) (
 	return file, nil
 }
 
-func (h *EventSourcedQueryHandler) catchUp(ctx context.Context) {
+func (handler *EventSourcedQueryHandler) catchUp(ctx context.Context) {
 	var err error
-	h.cursor, err = subscription.CatchUp(ctx, subscription.Input{
-		Log:    h.log,
-		Cursor: h.cursor,
-		Apply:  h.apply,
+	handler.cursor, err = subscription.CatchUp(ctx, subscription.Input{
+		Log:    handler.log,
+		Cursor: handler.cursor,
+		Apply:  handler.apply,
 	})
 	fatal.OnError(err)
 }
 
-func (h *EventSourcedQueryHandler) apply(ctx context.Context, event *eventsource.Event) error {
+func (handler *EventSourcedQueryHandler) apply(ctx context.Context, event *eventsource.Event) error {
 	var frame EventFrame
 	fatal.UnlessUnmarshal(event.Data, &frame)
 	switch frame.Type {
 	case EventTypeUploadInitiated:
-		return h.applyInitiated(frame.UploadInitiatedEvent)
+		return handler.applyInitiated(frame.UploadInitiatedEvent)
 	case EventTypePartUploaded:
-		return h.applyPartUploaded(frame.PartUploadedEvent)
+		return handler.applyPartUploaded(frame.PartUploadedEvent)
 	case EventTypeUploadCompleted:
-		return h.applyCompleted(frame.UploadCompletedEvent)
+		return handler.applyCompleted(frame.UploadCompletedEvent)
 	case EventTypeUploadAborted:
-		return h.applyAborted(frame.UploadAbortedEvent)
+		return handler.applyAborted(frame.UploadAbortedEvent)
 	}
 	return nil
 }
 
-func (h *EventSourcedQueryHandler) applyInitiated(e *UploadInitiatedEvent) error {
-	h.uploadByID[e.UploadID] = &Upload{
+func (handler *EventSourcedQueryHandler) applyInitiated(e *UploadInitiatedEvent) error {
+	handler.uploadByID[e.UploadID] = &Upload{
 		ID:          e.UploadID,
 		UserID:      e.UserID,
 		Filename:    e.Filename,
@@ -95,31 +95,31 @@ func (h *EventSourcedQueryHandler) applyInitiated(e *UploadInitiatedEvent) error
 	return nil
 }
 
-func (h *EventSourcedQueryHandler) applyPartUploaded(e *PartUploadedEvent) error {
-	upload, ok := h.uploadByID[e.UploadID]
+func (handler *EventSourcedQueryHandler) applyPartUploaded(e *PartUploadedEvent) error {
+	upload, ok := handler.uploadByID[e.UploadID]
 	if !ok {
 		return nil
 	}
-	for i, p := range upload.Parts {
-		if p.PartNumber == e.PartNumber {
-			upload.Parts[i] = Part{PartNumber: e.PartNumber, Size: e.Size, Checksum: e.Checksum}
+	for i, part := range upload.Parts {
+		if part.Number == e.PartNumber {
+			upload.Parts[i] = Part{Number: e.PartNumber, Size: e.Size, Checksum: e.Checksum}
 			upload.UpdatedAt = e.UpdatedAt
 			return nil
 		}
 	}
-	upload.Parts = append(upload.Parts, Part{PartNumber: e.PartNumber, Size: e.Size, Checksum: e.Checksum})
+	upload.Parts = append(upload.Parts, Part{Number: e.PartNumber, Size: e.Size, Checksum: e.Checksum})
 	upload.UpdatedAt = e.UpdatedAt
 	return nil
 }
 
-func (h *EventSourcedQueryHandler) applyCompleted(e *UploadCompletedEvent) error {
-	upload, ok := h.uploadByID[e.UploadID]
+func (handler *EventSourcedQueryHandler) applyCompleted(e *UploadCompletedEvent) error {
+	upload, ok := handler.uploadByID[e.UploadID]
 	if !ok {
 		return nil
 	}
 	upload.Status = UploadStatusCompleted
 	upload.UpdatedAt = e.UpdatedAt
-	h.fileByID[e.FileID] = &File{
+	handler.fileByID[e.FileID] = &File{
 		ID:          e.FileID,
 		UserID:      upload.UserID,
 		UploadID:    e.UploadID,
@@ -132,12 +132,12 @@ func (h *EventSourcedQueryHandler) applyCompleted(e *UploadCompletedEvent) error
 	return nil
 }
 
-func (h *EventSourcedQueryHandler) applyAborted(e *UploadAbortedEvent) error {
-	upload, ok := h.uploadByID[e.UploadID]
+func (handler *EventSourcedQueryHandler) applyAborted(event *UploadAbortedEvent) error {
+	upload, ok := handler.uploadByID[event.UploadID]
 	if !ok {
 		return nil
 	}
 	upload.Status = UploadStatusAborted
-	upload.UpdatedAt = e.UpdatedAt
+	upload.UpdatedAt = event.UpdatedAt
 	return nil
 }

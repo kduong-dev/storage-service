@@ -54,7 +54,7 @@ func (handler *EventSourcedCommandHandler) RecordPart(ctx context.Context, uploa
 		EventBase: eventsource.NewEventBase(EventTypePartUploaded),
 		PartUploadedEvent: &PartUploadedEvent{
 			UploadID:   uploadID,
-			PartNumber: part.PartNumber,
+			PartNumber: part.Number,
 			Size:       part.Size,
 			Checksum:   part.Checksum,
 			UpdatedAt:  updatedAt,
@@ -155,14 +155,14 @@ func (handler *EventSourcedCommandHandler) applyPartUploaded(event *PartUploaded
 		return nil
 	}
 	// Replace if the same part number was re-uploaded.
-	for i, p := range upload.Parts {
-		if p.PartNumber == event.PartNumber {
-			upload.Parts[i] = Part{PartNumber: event.PartNumber, Size: event.Size, Checksum: event.Checksum}
+	for i, part := range upload.Parts {
+		if part.Number == event.PartNumber {
+			upload.Parts[i] = Part{Number: event.PartNumber, Size: event.Size, Checksum: event.Checksum}
 			upload.UpdatedAt = event.UpdatedAt
 			return nil
 		}
 	}
-	upload.Parts = append(upload.Parts, Part{PartNumber: event.PartNumber, Size: event.Size, Checksum: event.Checksum})
+	upload.Parts = append(upload.Parts, Part{Number: event.PartNumber, Size: event.Size, Checksum: event.Checksum})
 	upload.UpdatedAt = event.UpdatedAt
 	return nil
 }
