@@ -7,6 +7,7 @@ import (
 
 	"github.com/ansel1/merry"
 	"github.com/kduong/trading-backend/cmd/storage-service/internal/filestore"
+	"github.com/kduong/trading-backend/internal/authz"
 	"github.com/kduong/trading-backend/internal/contextx"
 	"github.com/kduong/trading-backend/internal/httpx"
 	uuid "github.com/satori/go.uuid"
@@ -35,6 +36,9 @@ func (handler *Handler) InitialiseUpload(responseWriter http.ResponseWriter, req
 		}
 	}()
 	ctx := request.Context()
+	if err = authz.RequireScope(ctx, authz.ScopeFilesWrite); err != nil {
+		return
+	}
 	var input InitialiseUploadInput
 	if err = json.NewDecoder(request.Body).Decode(&input); err != nil {
 		err = merry.Wrap(err).WithHTTPCode(http.StatusBadRequest)

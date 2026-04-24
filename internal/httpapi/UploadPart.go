@@ -10,6 +10,7 @@ import (
 	"github.com/ansel1/merry"
 	"github.com/gorilla/mux"
 	"github.com/kduong/trading-backend/cmd/storage-service/internal/filestore"
+	"github.com/kduong/trading-backend/internal/authz"
 	"github.com/kduong/trading-backend/internal/httpx"
 )
 
@@ -27,6 +28,9 @@ func (handler *Handler) UploadPart(responseWriter http.ResponseWriter, request *
 		}
 	}()
 	ctx := request.Context()
+	if err = authz.RequireScope(ctx, authz.ScopeFilesWrite); err != nil {
+		return
+	}
 	vars := mux.Vars(request)
 	uploadID := vars["upload_id"]
 	partNumber, err := strconv.Atoi(vars["part_number"])

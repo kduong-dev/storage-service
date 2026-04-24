@@ -3,7 +3,7 @@ package filestore
 import (
 	"context"
 
-	"github.com/kduong/trading-backend/internal/contextx"
+	"github.com/kduong/trading-backend/internal/authz"
 	"github.com/kduong/trading-backend/internal/eventsource"
 	"github.com/kduong/trading-backend/internal/eventsource/subscription"
 	"github.com/kduong/trading-backend/internal/fatal"
@@ -36,8 +36,7 @@ func (handler *EventSourcedQueryHandler) GetUpload(ctx context.Context, uploadID
 	if !ok {
 		return nil, ErrUploadNotFound
 	}
-	userID := contextx.GetUserID(ctx)
-	if upload.UserID != userID {
+	if err := authz.RequireOwner(ctx, upload.UserID); err != nil {
 		return nil, ErrUploadForbidden
 	}
 	return upload, nil
@@ -49,8 +48,7 @@ func (handler *EventSourcedQueryHandler) GetFile(ctx context.Context, fileID str
 	if !ok {
 		return nil, ErrFileNotFound
 	}
-	userID := contextx.GetUserID(ctx)
-	if file.UserID != userID {
+	if err := authz.RequireOwner(ctx, file.UserID); err != nil {
 		return nil, ErrFileForbidden
 	}
 	return file, nil

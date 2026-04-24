@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/kduong/trading-backend/internal/authz"
 	"github.com/kduong/trading-backend/internal/httpx"
 )
 
@@ -18,6 +19,9 @@ func (handler *Handler) DownloadFile(responseWriter http.ResponseWriter, request
 		}
 	}()
 	ctx := request.Context()
+	if err = authz.RequireScope(ctx, authz.ScopeFilesRead); err != nil {
+		return
+	}
 	vars := mux.Vars(request)
 	fileID := vars["file_id"]
 	file, err := handler.queryHandler.GetFile(ctx, fileID)

@@ -32,7 +32,7 @@ func main() {
 		},
 	)
 	router := httpapi.NewRouter(httpapi.NewRouterInput{
-		AuthMiddleware: auth.MiddlewareFromEnv(),
+		AuthMiddleware: auth.MiddlewareFromEnv(auth.AudienceStorageService),
 		CommandHandler: commandHandler,
 		QueryHandler:   queryHandler,
 		Backend:        storage.FromEnv(),

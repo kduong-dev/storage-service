@@ -8,6 +8,7 @@ import (
 
 	"github.com/ansel1/merry"
 	"github.com/gorilla/mux"
+	"github.com/kduong/trading-backend/internal/authz"
 	"github.com/kduong/trading-backend/internal/httpx"
 	uuid "github.com/satori/go.uuid"
 )
@@ -20,6 +21,9 @@ func (handler *Handler) CompleteUpload(responseWriter http.ResponseWriter, reque
 		}
 	}()
 	ctx := request.Context()
+	if err = authz.RequireScope(ctx, authz.ScopeFilesWrite); err != nil {
+		return
+	}
 	uploadID := mux.Vars(request)["upload_id"]
 
 	// Verify ownership and fetch recorded parts.
