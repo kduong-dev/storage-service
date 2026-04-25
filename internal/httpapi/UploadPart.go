@@ -40,7 +40,7 @@ func (handler *Handler) UploadPart(responseWriter http.ResponseWriter, request *
 	}
 	// Verify ownership via the query handler before accepting bytes.
 	if _, err = handler.queryHandler.GetUpload(ctx, uploadID); err != nil {
-		err = merrifyError[err]
+		err = merrifyError(err)
 		return
 	}
 	const maxPartSize = 5 * 1024 * 1024 // 5 MB
@@ -63,7 +63,7 @@ func (handler *Handler) UploadPart(responseWriter http.ResponseWriter, request *
 	}
 	now := time.Now().UTC().Format(time.RFC3339)
 	if err = handler.commandHandler.RecordPart(ctx, uploadID, part, now); err != nil {
-		err = merrifyError[err]
+		err = merrifyError(err)
 		return
 	}
 

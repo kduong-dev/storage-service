@@ -29,7 +29,7 @@ func (handler *Handler) CompleteUpload(responseWriter http.ResponseWriter, reque
 	// Verify ownership and fetch recorded parts.
 	upload, err := handler.queryHandler.GetUpload(ctx, uploadID)
 	if err != nil {
-		err = merrifyError[err]
+		err = merrifyError(err)
 		return
 	}
 	if len(upload.Parts) == 0 {
@@ -52,7 +52,7 @@ func (handler *Handler) CompleteUpload(responseWriter http.ResponseWriter, reque
 
 	now := time.Now().UTC().Format(time.RFC3339)
 	if err = handler.commandHandler.CompleteUpload(ctx, uploadID, fileID, size, checksum, now); err != nil {
-		err = merrifyError[err]
+		err = merrifyError(err)
 		return
 	}
 
@@ -62,7 +62,7 @@ func (handler *Handler) CompleteUpload(responseWriter http.ResponseWriter, reque
 	// Re-read the finalised file record from the query handler.
 	file, err := handler.queryHandler.GetFile(ctx, fileID)
 	if err != nil {
-		err = merrifyError[err]
+		err = merrifyError(err)
 		return
 	}
 

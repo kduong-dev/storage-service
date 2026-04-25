@@ -39,9 +39,8 @@ func (handler *Handler) InitialiseUpload(responseWriter http.ResponseWriter, req
 	if err = authz.RequireScope(ctx, authz.ScopeFilesWrite); err != nil {
 		return
 	}
-	var input InitialiseUploadInput
-	if err = json.NewDecoder(request.Body).Decode(&input); err != nil {
-		err = merry.Wrap(err).WithHTTPCode(http.StatusBadRequest)
+	input, err := httpx.DecodeJSONBody[InitialiseUploadInput](request)
+	if err != nil {
 		return
 	}
 	if err = input.Validate(); err != nil {
@@ -58,7 +57,7 @@ func (handler *Handler) InitialiseUpload(responseWriter http.ResponseWriter, req
 		UpdatedAt:   now,
 	}
 	if err = handler.commandHandler.InitialiseUpload(ctx, upload); err != nil {
-		err = merrifyError[err]
+		err = merrifyError(err)
 		return
 	}
 	responseWriter.Header().Set("Content-Type", "application/json")

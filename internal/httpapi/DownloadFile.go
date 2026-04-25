@@ -26,12 +26,12 @@ func (handler *Handler) DownloadFile(responseWriter http.ResponseWriter, request
 	fileID := vars["file_id"]
 	file, err := handler.queryHandler.GetFile(ctx, fileID)
 	if err != nil {
-		err = merrifyError[err]
+		err = merrifyError(err)
 		return
 	}
 	readSeekCloser, err := handler.backend.Open(file.ID)
 	if err != nil {
-		err = merrifyError[err]
+		err = merrifyError(err)
 		return
 	}
 	defer readSeekCloser.Close()

@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/ansel1/merry"
@@ -39,10 +40,18 @@ func NewRouter(input NewRouterInput) *mux.Router {
 	return router
 }
 
-var merrifyError = map[error]error{
-	filestore.ErrUploadNotFound:  merry.New("upload not found").WithHTTPCode(http.StatusNotFound),
-	filestore.ErrUploadForbidden: merry.New("forbidden").WithHTTPCode(http.StatusForbidden),
-	filestore.ErrFileNotFound:    merry.New("file not found").WithHTTPCode(http.StatusNotFound),
-	filestore.ErrFileForbidden:   merry.New("forbidden").WithHTTPCode(http.StatusForbidden),
-	filestore.ErrUploadNotActive: merry.New("upload is not active").WithHTTPCode(http.StatusConflict),
+func merrifyError(err error) error {
+	switch {
+	case errors.Is(err, filestore.ErrUploadNotFound):
+		return merry.Wrap(err).WithHTTPCode(http.StatusNotFound).WithUserMessage("upload not found")
+	case errors.Is(err, filestore.ErrUploadForbidden):
+		return merry.Wrap(err).WithHTTPCode(http.StatusForbidden).WithUserMessage("forbidden")
+	case errors.Is(err, filestore.ErrFileNotFound):
+		return merry.Wrap(err).WithHTTPCode(http.StatusNotFound).WithUserMessage("file not found")
+	case errors.Is(err, filestore.ErrFileForbidden):
+		return merry.Wrap(err).WithHTTPCode(http.StatusForbidden).WithUserMessage("forbidden")
+	case errors.Is(err, filestore.ErrUploadNotActive):
+		return merry.Wrap(err).WithHTTPCode(http.StatusConflict).WithUserMessage("upload is not active")
+	}
+	return err
 }
