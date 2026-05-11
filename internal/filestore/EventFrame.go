@@ -21,7 +21,7 @@ type EventFrame struct {
 type UploadInitiatedEvent struct {
 	UploadID    string `json:"upload_id"`
 	UserID      string `json:"user_id"`
-	Filename    string `json:"filename"`
+	Key         string `json:"key"`
 	ContentType string `json:"content_type"`
 	CreatedAt   string `json:"created_at"`
 }

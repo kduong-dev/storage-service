@@ -13,7 +13,7 @@ const (
 type Upload struct {
 	ID          string       `json:"id"`
 	UserID      string       `json:"user_id"`
-	Filename    string       `json:"filename"`
+	Key         string       `json:"key"`
 	ContentType string       `json:"content_type"`
 	Status      UploadStatus `json:"status"`
 	// Parts received so far, indexed by part number (1-based).
@@ -34,7 +34,7 @@ type File struct {
 	ID          string `json:"id"`
 	UserID      string `json:"user_id"`
 	UploadID    string `json:"upload_id"`
-	Filename    string `json:"filename"`
+	Key         string `json:"key"`
 	ContentType string `json:"content_type"`
 	Size        int64  `json:"size"`
 	Checksum    string `json:"checksum"` // hex-encoded MD5 of the full object

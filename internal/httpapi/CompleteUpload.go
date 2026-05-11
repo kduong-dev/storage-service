@@ -44,7 +44,7 @@ func (handler *Handler) CompleteUpload(responseWriter http.ResponseWriter, reque
 	sort.Ints(partNumbers)
 
 	fileID := uuid.NewV4().String()
-	size, checksum, backendErr := handler.backend.Assemble(uploadID, fileID, partNumbers)
+	size, checksum, backendErr := handler.backend.Assemble(uploadID, fileID, upload.Key, partNumbers)
 	if backendErr != nil {
 		err = merry.Wrap(backendErr).WithHTTPCode(http.StatusInternalServerError)
 		return

@@ -31,7 +31,7 @@ const (
 type Upload struct {
 	ID          string       `json:"id"`
 	UserID      string       `json:"user_id"`
-	Filename    string       `json:"filename"`
+	Key         string       `json:"key"`
 	ContentType string       `json:"content_type"`
 	Status      UploadStatus `json:"status"`
 	Parts       []Part       `json:"parts,omitempty"`
@@ -51,7 +51,7 @@ type File struct {
 	ID          string `json:"id"`
 	UserID      string `json:"user_id"`
 	UploadID    string `json:"upload_id"`
-	Filename    string `json:"filename"`
+	Key         string `json:"key"`
 	ContentType string `json:"content_type"`
 	Size        int64  `json:"size"`
 	Checksum    string `json:"checksum"`
@@ -75,7 +75,7 @@ type DownloadFileResponse struct {
 // Client is the public interface for the storage-service API.
 type Client interface {
 	// InitialiseUpload begins a new multipart upload session.
-	InitialiseUpload(ctx context.Context, filename string, contentType string) (*Upload, error)
+	InitialiseUpload(ctx context.Context, key string, contentType string) (*Upload, error)
 
 	// UploadPart streams one chunk to an existing upload session.
 	UploadPart(ctx context.Context, uploadID string, partNumber int, body io.Reader) (*UploadPartResponse, error)

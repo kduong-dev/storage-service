@@ -84,7 +84,7 @@ func (handler *EventSourcedQueryHandler) applyInitiated(e *UploadInitiatedEvent)
 	handler.uploadByID[e.UploadID] = &Upload{
 		ID:          e.UploadID,
 		UserID:      e.UserID,
-		Filename:    e.Filename,
+		Key:         e.Key,
 		ContentType: e.ContentType,
 		Status:      UploadStatusInitiated,
 		CreatedAt:   e.CreatedAt,
@@ -121,7 +121,7 @@ func (handler *EventSourcedQueryHandler) applyCompleted(e *UploadCompletedEvent)
 		ID:          e.FileID,
 		UserID:      upload.UserID,
 		UploadID:    e.UploadID,
-		Filename:    upload.Filename,
+		Key:         upload.Key,
 		ContentType: upload.ContentType,
 		Size:        e.Size,
 		Checksum:    e.Checksum,

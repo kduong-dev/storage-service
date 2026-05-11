@@ -34,18 +34,18 @@ func NewHTTPClient(input NewHTTPClientInput) *HTTPClient {
 }
 
 type initialiseUploadRequestBody struct {
-	Filename    string `json:"filename"`
+	Key         string `json:"key"`
 	ContentType string `json:"content_type"`
 }
 
-func (client *HTTPClient) InitialiseUpload(ctx context.Context, filename string, contentType string) (output *Upload, err error) {
+func (client *HTTPClient) InitialiseUpload(ctx context.Context, key string, contentType string) (output *Upload, err error) {
 	target := url.URL{
 		Scheme: client.baseURL.Scheme,
 		Host:   client.baseURL.Host,
 		Path:   "/storage/v1/uploads",
 	}
 	requestBody := initialiseUploadRequestBody{
-		Filename:    filename,
+		Key:         key,
 		ContentType: contentType,
 	}
 	encodedBody, err := json.Marshal(requestBody)

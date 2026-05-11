@@ -51,12 +51,15 @@ func (backend *FileSystemBackend) WritePart(uploadID string, partNumber int, r i
 	return size, hex.EncodeToString(h.Sum(nil)), nil
 }
 
-func (backend *FileSystemBackend) Assemble(uploadID string, fileID string, partNumbers []int) (int64, string, error) {
+func (backend *FileSystemBackend) Assemble(uploadID string, fileID string, key string, partNumbers []int) (int64, string, error) {
 	sorted := make([]int, len(partNumbers))
 	copy(sorted, partNumbers)
 	sort.Ints(sorted)
 
-	outPath := filepath.Join(backend.root, "objects", fileID)
+	outPath := filepath.Join(backend.root, "objects", key)
+	if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
+		return 0, "", fmt.Errorf("storage: create object dirs: %w", err)
+	}
 	out, err := os.Create(outPath)
 	if err != nil {
 		return 0, "", fmt.Errorf("storage: create object file: %w", err)
@@ -81,12 +84,12 @@ func (backend *FileSystemBackend) Assemble(uploadID string, fileID string, partN
 	return total, hex.EncodeToString(h.Sum(nil)), nil
 }
 
-func (backend *FileSystemBackend) Open(fileID string) (io.ReadSeekCloser, error) {
-	path := filepath.Join(backend.root, "objects", fileID)
+func (backend *FileSystemBackend) Open(key string) (io.ReadSeekCloser, error) {
+	path := filepath.Join(backend.root, "objects", key)
 	f, err := os.Open(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, fmt.Errorf("storage: file %s not found", fileID)
+			return nil, fmt.Errorf("storage: file %s not found", key)
 		}
 		return nil, fmt.Errorf("storage: open file: %w", err)
 	}

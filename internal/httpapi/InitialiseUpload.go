@@ -14,13 +14,13 @@ import (
 )
 
 type InitialiseUploadInput struct {
-	Filename    string `json:"filename"`
+	Key         string `json:"key"`
 	ContentType string `json:"content_type"`
 }
 
 func (input *InitialiseUploadInput) Validate() error {
-	if input.Filename == "" {
-		return merry.New("filename is required").WithHTTPCode(http.StatusBadRequest)
+	if input.Key == "" {
+		return merry.New("key is required").WithHTTPCode(http.StatusBadRequest)
 	}
 	if input.ContentType == "" {
 		return merry.New("content_type is required").WithHTTPCode(http.StatusBadRequest)
@@ -50,7 +50,7 @@ func (handler *Handler) InitialiseUpload(responseWriter http.ResponseWriter, req
 	upload := &filestore.Upload{
 		ID:          uuid.NewV4().String(),
 		UserID:      contextx.GetUserID(ctx),
-		Filename:    input.Filename,
+		Key:         input.Key,
 		ContentType: input.ContentType,
 		Status:      filestore.UploadStatusInitiated,
 		CreatedAt:   now,

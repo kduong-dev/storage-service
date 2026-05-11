@@ -47,7 +47,7 @@ func (backend *InMemoryBackend) WritePart(uploadID string, partNumber int, r io.
 	return int64(len(data)), checksum, nil
 }
 
-func (backend *InMemoryBackend) Assemble(uploadID string, fileID string, partNumbers []int) (int64, string, error) {
+func (backend *InMemoryBackend) Assemble(uploadID string, fileID string, key string, partNumbers []int) (int64, string, error) {
 	backend.mu.Lock()
 	defer backend.mu.Unlock()
 
@@ -72,16 +72,16 @@ func (backend *InMemoryBackend) Assemble(uploadID string, fileID string, partNum
 	}
 
 	assembled := buf.Bytes()
-	backend.objects[fileID] = assembled
+	backend.objects[key] = assembled
 	return int64(len(assembled)), hex.EncodeToString(h.Sum(nil)), nil
 }
 
-func (backend *InMemoryBackend) Open(fileID string) (io.ReadSeekCloser, error) {
+func (backend *InMemoryBackend) Open(key string) (io.ReadSeekCloser, error) {
 	backend.mu.RLock()
 	defer backend.mu.RUnlock()
-	data, ok := backend.objects[fileID]
+	data, ok := backend.objects[key]
 	if !ok {
-		return nil, fmt.Errorf("storage: file %s not found", fileID)
+		return nil, fmt.Errorf("storage: file %s not found", key)
 	}
 	return &nopReadSeekCloser{Reader: bytes.NewReader(data)}, nil
 }
