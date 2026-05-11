@@ -42,7 +42,7 @@ func main() {
 		AllowedMethods:   []string{"GET", "HEAD", "OPTIONS", "POST", "PUT", "DELETE"},
 		AllowedHeaders:   []string{"Content-Type", "Content-Length", "Accept-Encoding", "Authorization", "Accept", "Origin", "Range"},
 		ExposedHeaders:   []string{"Content-Length", "Content-Range", "Content-Disposition"},
-		AllowCredentials: true,
+		AllowCredentials: false,
 	})
 	fatal.OnError(http.ListenAndServe(":8083", c.Handler(router)))
 }
