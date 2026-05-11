@@ -10,7 +10,7 @@ const partSizeBytes = 5 * 1024 * 1024 // 5 MB
 
 // UploadFileInput holds the parameters for UploadFile.
 type UploadFileInput struct {
-	Filename    string
+	Key         string
 	ContentType string
 	Body        io.Reader
 }
@@ -19,7 +19,7 @@ type UploadFileInput struct {
 // It splits the body into parts of up to 5 MB each, uploading them sequentially,
 // then completes the upload and returns the resulting File.
 func UploadFile(ctx context.Context, client Client, input UploadFileInput) (*File, error) {
-	upload, err := client.InitialiseUpload(ctx, input.Filename, input.ContentType)
+	upload, err := client.InitialiseUpload(ctx, input.Key, input.ContentType)
 	if err != nil {
 		return nil, err
 	}

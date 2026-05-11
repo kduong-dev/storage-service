@@ -19,6 +19,7 @@ type InitialiseUploadInput struct {
 }
 
 func (input *InitialiseUploadInput) Validate() error {
+	// TODO: validate key
 	if input.Key == "" {
 		return merry.New("key is required").WithHTTPCode(http.StatusBadRequest)
 	}
@@ -46,11 +47,12 @@ func (handler *Handler) InitialiseUpload(responseWriter http.ResponseWriter, req
 	if err = input.Validate(); err != nil {
 		return
 	}
+	userID := contextx.GetUserID(ctx)
 	now := time.Now().UTC().Format(time.RFC3339)
 	upload := &filestore.Upload{
 		ID:          uuid.NewV4().String(),
-		UserID:      contextx.GetUserID(ctx),
-		Key:         input.Key,
+		UserID:      userID,
+		Key:         userScopedKey(userID, input.Key),
 		ContentType: input.ContentType,
 		Status:      filestore.UploadStatusInitiated,
 		CreatedAt:   now,
@@ -63,4 +65,8 @@ func (handler *Handler) InitialiseUpload(responseWriter http.ResponseWriter, req
 	responseWriter.Header().Set("Content-Type", "application/json")
 	responseWriter.WriteHeader(http.StatusCreated)
 	json.NewEncoder(responseWriter).Encode(upload)
+}
+
+func userScopedKey(userID, key string) string {
+	return userID + "/" + key
 }

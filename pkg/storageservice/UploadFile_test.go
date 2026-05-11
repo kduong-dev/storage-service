@@ -23,7 +23,7 @@ type fakeClient struct {
 }
 
 type fakeInitialiseUploadCall struct {
-	filename    string
+	key         string
 	contentType string
 }
 
@@ -33,12 +33,12 @@ type fakeUploadPartCall struct {
 	body       []byte
 }
 
-func (client *fakeClient) InitialiseUpload(ctx context.Context, filename string, contentType string) (*storageservice.Upload, error) {
+func (client *fakeClient) InitialiseUpload(ctx context.Context, key string, contentType string) (*storageservice.Upload, error) {
 	if client.initialiseUploadError != nil {
 		return nil, client.initialiseUploadError
 	}
 	client.initialisedUploads = append(client.initialisedUploads, fakeInitialiseUploadCall{
-		filename:    filename,
+		key:         key,
 		contentType: contentType,
 	})
 	return &storageservice.Upload{ID: "upload-1"}, nil
@@ -80,7 +80,7 @@ func TestUploadFile(t *testing.T) {
 		Convey("When uploading a file smaller than 5 MB", func() {
 			content := strings.Repeat("a", 1024)
 			input := storageservice.UploadFileInput{
-				Filename:    "small.txt",
+				Key:         "reports/job-1/report.html",
 				ContentType: "text/plain",
 				Body:        strings.NewReader(content),
 			}
@@ -91,6 +91,8 @@ func TestUploadFile(t *testing.T) {
 				So(err, ShouldBeNil)
 				So(file, ShouldNotBeNil)
 				So(file.ID, ShouldEqual, "file-1")
+				So(len(client.initialisedUploads), ShouldEqual, 1)
+				So(client.initialisedUploads[0].key, ShouldEqual, "reports/job-1/report.html")
 				So(len(client.uploadedParts), ShouldEqual, 1)
 				So(client.uploadedParts[0].partNumber, ShouldEqual, 1)
 				So(client.uploadedParts[0].body, ShouldResemble, []byte(content))
@@ -102,7 +104,7 @@ func TestUploadFile(t *testing.T) {
 		Convey("When uploading a file that is exactly 5 MB", func() {
 			content := bytes.Repeat([]byte("b"), 5*1024*1024)
 			input := storageservice.UploadFileInput{
-				Filename:    "exact.bin",
+				Key:         "reports/job-2/report.html",
 				ContentType: "application/octet-stream",
 				Body:        bytes.NewReader(content),
 			}
@@ -123,7 +125,7 @@ func TestUploadFile(t *testing.T) {
 			secondPart := bytes.Repeat([]byte("d"), 512*1024)
 			content := append(firstPart, secondPart...)
 			input := storageservice.UploadFileInput{
-				Filename:    "large.bin",
+				Key:         "reports/job-3/report.html",
 				ContentType: "application/octet-stream",
 				Body:        bytes.NewReader(content),
 			}
@@ -145,7 +147,7 @@ func TestUploadFile(t *testing.T) {
 		Convey("When InitialiseUpload returns an error", func() {
 			client.initialiseUploadError = errors.New("service unavailable")
 			input := storageservice.UploadFileInput{
-				Filename:    "file.txt",
+				Key:         "reports/job-4/report.html",
 				ContentType: "text/plain",
 				Body:        strings.NewReader("content"),
 			}
@@ -162,7 +164,7 @@ func TestUploadFile(t *testing.T) {
 		Convey("When UploadPart returns an error", func() {
 			client.uploadPartError = errors.New("write failed")
 			input := storageservice.UploadFileInput{
-				Filename:    "file.txt",
+				Key:         "reports/job-5/report.html",
 				ContentType: "text/plain",
 				Body:        strings.NewReader("content"),
 			}
@@ -179,7 +181,7 @@ func TestUploadFile(t *testing.T) {
 		Convey("When CompleteUpload returns an error", func() {
 			client.completeUploadError = errors.New("assembly failed")
 			input := storageservice.UploadFileInput{
-				Filename:    "file.txt",
+				Key:         "reports/job-6/report.html",
 				ContentType: "text/plain",
 				Body:        strings.NewReader("content"),
 			}
