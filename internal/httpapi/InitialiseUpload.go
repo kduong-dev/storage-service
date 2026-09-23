@@ -1,16 +1,16 @@
 package httpapi
 
 import (
-	"encoding/json"
 	"net/http"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/ansel1/merry"
-	"github.com/kduong/trading-backend/cmd/storage-service/internal/filestore"
-	"github.com/kduong/trading-backend/internal/authz"
-	"github.com/kduong/trading-backend/internal/contextx"
-	"github.com/kduong/trading-backend/internal/httpx"
-	uuid "github.com/satori/go.uuid"
+	"github.com/google/uuid"
+	"github.com/kduong-dev/goutil/httpx"
+	"github.com/kduong-dev/storage-service/internal/apikey"
+	"github.com/kduong-dev/storage-service/internal/filestore"
 )
 
 type InitialiseUploadInput struct {
@@ -19,9 +19,10 @@ type InitialiseUploadInput struct {
 }
 
 func (input *InitialiseUploadInput) Validate() error {
-	// TODO: validate key
-	if input.Key == "" {
-		return merry.New("key is required").WithHTTPCode(http.StatusBadRequest)
+	// Keys become paths under the caller's namespace, so they must not be able
+	// to climb out of it.
+	if !filepath.IsLocal(input.Key) || strings.Contains(input.Key, `\`) {
+		return merry.New("key must be a relative path without '..' segments").WithHTTPCode(http.StatusBadRequest)
 	}
 	if input.ContentType == "" {
 		return merry.New("content_type is required").WithHTTPCode(http.StatusBadRequest)
@@ -37,9 +38,6 @@ func (handler *Handler) InitialiseUpload(responseWriter http.ResponseWriter, req
 		}
 	}()
 	ctx := request.Context()
-	if err = authz.RequireScope(ctx, authz.ScopeFilesWrite); err != nil {
-		return
-	}
 	input, err := httpx.DecodeJSONBody[InitialiseUploadInput](request)
 	if err != nil {
 		return
@@ -47,12 +45,12 @@ func (handler *Handler) InitialiseUpload(responseWriter http.ResponseWriter, req
 	if err = input.Validate(); err != nil {
 		return
 	}
-	userID := contextx.GetUserID(ctx)
+	namespace := apikey.GetNamespace(ctx)
 	now := time.Now().UTC().Format(time.RFC3339)
 	upload := &filestore.Upload{
-		ID:          uuid.NewV4().String(),
-		UserID:      userID,
-		Key:         userScopedKey(userID, input.Key),
+		ID:          uuid.NewString(),
+		Namespace:   namespace,
+		Key:         namespace + "/" + input.Key,
 		ContentType: input.ContentType,
 		Status:      filestore.UploadStatusInitiated,
 		CreatedAt:   now,
@@ -62,11 +60,5 @@ func (handler *Handler) InitialiseUpload(responseWriter http.ResponseWriter, req
 		err = merrifyError(err)
 		return
 	}
-	responseWriter.Header().Set("Content-Type", "application/json")
-	responseWriter.WriteHeader(http.StatusCreated)
-	json.NewEncoder(responseWriter).Encode(upload)
-}
-
-func userScopedKey(userID, key string) string {
-	return userID + "/" + key
+	httpx.SendJSONResponse(responseWriter, http.StatusCreated, upload)
 }

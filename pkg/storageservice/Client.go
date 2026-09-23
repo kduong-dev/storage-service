@@ -6,15 +6,16 @@ import (
 	"io"
 	"time"
 
-	"github.com/kduong/trading-backend/internal/config"
+	"github.com/kduong-dev/goutil/config"
+	"github.com/kduong-dev/goutil/fatal"
 )
 
 var (
+	ErrUnauthorized    = errors.New("unauthorized")
 	ErrUploadNotFound  = errors.New("upload not found")
-	ErrUploadForbidden = errors.New("upload forbidden")
 	ErrFileNotFound    = errors.New("file not found")
-	ErrFileForbidden   = errors.New("file forbidden")
 	ErrUploadNotActive = errors.New("upload is not active")
+	ErrBadRequest      = errors.New("bad request")
 	ErrServerError     = errors.New("server error")
 )
 
@@ -30,7 +31,7 @@ const (
 // Upload tracks a multipart upload session.
 type Upload struct {
 	ID          string       `json:"id"`
-	UserID      string       `json:"user_id"`
+	Namespace   string       `json:"namespace"`
 	Key         string       `json:"key"`
 	ContentType string       `json:"content_type"`
 	Status      UploadStatus `json:"status"`
@@ -49,7 +50,7 @@ type Part struct {
 // File is the completed, stored object produced after an upload is finalised.
 type File struct {
 	ID          string `json:"id"`
-	UserID      string `json:"user_id"`
+	Namespace   string `json:"namespace"`
 	UploadID    string `json:"upload_id"`
 	Key         string `json:"key"`
 	ContentType string `json:"content_type"`
@@ -72,9 +73,12 @@ type DownloadFileResponse struct {
 	Body               io.ReadCloser
 }
 
-// Client is the public interface for the storage-service API.
+// Client is the public interface for the storage-service API. Every call is
+// scoped to the namespace of the API key the client was configured with;
+// deciding which end user may access a file is the calling service's job.
 type Client interface {
-	// InitialiseUpload begins a new multipart upload session.
+	// InitialiseUpload begins a new multipart upload session. key is a
+	// relative path within the caller's namespace.
 	InitialiseUpload(ctx context.Context, key string, contentType string) (*Upload, error)
 
 	// UploadPart streams one chunk to an existing upload session.
@@ -94,9 +98,11 @@ func ClientFromEnv() Client {
 	case "HTTP":
 		return NewHTTPClient(NewHTTPClientInput{
 			Timeout: config.EnvDuration("STORAGE_SERVICE_HTTP_CLIENT_TIMEOUT", 20*time.Second),
-			BaseURL: config.EnvURLOrFatal("STORAGE_SERVICE"),
+			BaseURL: *config.EnvURLOrFatal("STORAGE_SERVICE_URL"),
+			APIKey:  config.EnvStringOrFatal("STORAGE_SERVICE_API_KEY"),
 		})
 	default:
-		panic("invalid storage service client implementation: " + implementation)
+		fatal.LogErrorf("invalid storage service client implementation: %s", implementation)
+		return nil
 	}
 }

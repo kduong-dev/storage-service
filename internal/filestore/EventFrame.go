@@ -1,12 +1,12 @@
 package filestore
 
-import "github.com/kduong/trading-backend/internal/eventsource"
+import "github.com/kduong-dev/goutil/eventsource"
 
 const (
-	EventTypeUploadInitiated  eventsource.EventType = "upload_initiated"
-	EventTypePartUploaded     eventsource.EventType = "part_uploaded"
-	EventTypeUploadCompleted  eventsource.EventType = "upload_completed"
-	EventTypeUploadAborted    eventsource.EventType = "upload_aborted"
+	EventTypeUploadInitiated eventsource.EventType = "upload_initiated"
+	EventTypePartUploaded    eventsource.EventType = "part_uploaded"
+	EventTypeUploadCompleted eventsource.EventType = "upload_completed"
+	EventTypeUploadAborted   eventsource.EventType = "upload_aborted"
 )
 
 // EventFrame is the envelope written to the event log.
@@ -20,7 +20,7 @@ type EventFrame struct {
 
 type UploadInitiatedEvent struct {
 	UploadID    string `json:"upload_id"`
-	UserID      string `json:"user_id"`
+	Namespace   string `json:"namespace"`
 	Key         string `json:"key"`
 	ContentType string `json:"content_type"`
 	CreatedAt   string `json:"created_at"`

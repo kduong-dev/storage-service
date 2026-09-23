@@ -3,139 +3,39 @@ package filestore
 import (
 	"context"
 
-	"github.com/kduong/trading-backend/internal/authz"
-	"github.com/kduong/trading-backend/internal/eventsource"
-	"github.com/kduong/trading-backend/internal/eventsource/subscription"
-	"github.com/kduong/trading-backend/internal/fatal"
+	"github.com/kduong-dev/goutil/eventsource"
 )
 
 var _ QueryHandler = (*EventSourcedQueryHandler)(nil)
 
 type EventSourcedQueryHandler struct {
-	log        eventsource.Log
-	cursor     int64
-	uploadByID map[string]*Upload
-	fileByID   map[string]*File
+	projection *projection
 }
 
 type NewEventSourcedQueryHandlerInput struct {
 	Log eventsource.Log
+	// LegacyNamespace is assigned to uploads recorded before namespaces existed.
+	LegacyNamespace string
 }
 
 func NewEventSourcedQueryHandler(input NewEventSourcedQueryHandlerInput) *EventSourcedQueryHandler {
-	return &EventSourcedQueryHandler{
-		log:        input.Log,
-		uploadByID: make(map[string]*Upload),
-		fileByID:   make(map[string]*File),
-	}
+	return &EventSourcedQueryHandler{projection: newProjection(input.Log, input.LegacyNamespace)}
 }
 
 func (handler *EventSourcedQueryHandler) GetUpload(ctx context.Context, uploadID string) (*Upload, error) {
-	handler.catchUp(ctx)
-	upload, ok := handler.uploadByID[uploadID]
+	handler.projection.catchUp(ctx)
+	upload, ok := handler.projection.uploadByID[uploadID]
 	if !ok {
 		return nil, ErrUploadNotFound
-	}
-	if err := authz.RequireOwner(ctx, upload.UserID); err != nil {
-		return nil, ErrUploadForbidden
 	}
 	return upload, nil
 }
 
 func (handler *EventSourcedQueryHandler) GetFile(ctx context.Context, fileID string) (*File, error) {
-	handler.catchUp(ctx)
-	file, ok := handler.fileByID[fileID]
+	handler.projection.catchUp(ctx)
+	file, ok := handler.projection.fileByID[fileID]
 	if !ok {
 		return nil, ErrFileNotFound
 	}
-	if err := authz.RequireOwner(ctx, file.UserID); err != nil {
-		return nil, ErrFileForbidden
-	}
 	return file, nil
-}
-
-func (handler *EventSourcedQueryHandler) catchUp(ctx context.Context) {
-	var err error
-	handler.cursor, err = subscription.CatchUp(ctx, subscription.Input{
-		Log:    handler.log,
-		Cursor: handler.cursor,
-		Apply:  handler.apply,
-	})
-	fatal.OnError(err)
-}
-
-func (handler *EventSourcedQueryHandler) apply(ctx context.Context, event *eventsource.Event) error {
-	var frame EventFrame
-	fatal.UnlessUnmarshal(event.Data, &frame)
-	switch frame.Type {
-	case EventTypeUploadInitiated:
-		return handler.applyInitiated(frame.UploadInitiatedEvent)
-	case EventTypePartUploaded:
-		return handler.applyPartUploaded(frame.PartUploadedEvent)
-	case EventTypeUploadCompleted:
-		return handler.applyCompleted(frame.UploadCompletedEvent)
-	case EventTypeUploadAborted:
-		return handler.applyAborted(frame.UploadAbortedEvent)
-	}
-	return nil
-}
-
-func (handler *EventSourcedQueryHandler) applyInitiated(e *UploadInitiatedEvent) error {
-	handler.uploadByID[e.UploadID] = &Upload{
-		ID:          e.UploadID,
-		UserID:      e.UserID,
-		Key:         e.Key,
-		ContentType: e.ContentType,
-		Status:      UploadStatusInitiated,
-		CreatedAt:   e.CreatedAt,
-		UpdatedAt:   e.CreatedAt,
-	}
-	return nil
-}
-
-func (handler *EventSourcedQueryHandler) applyPartUploaded(e *PartUploadedEvent) error {
-	upload, ok := handler.uploadByID[e.UploadID]
-	if !ok {
-		return nil
-	}
-	for i, part := range upload.Parts {
-		if part.Number == e.PartNumber {
-			upload.Parts[i] = Part{Number: e.PartNumber, Size: e.Size, Checksum: e.Checksum}
-			upload.UpdatedAt = e.UpdatedAt
-			return nil
-		}
-	}
-	upload.Parts = append(upload.Parts, Part{Number: e.PartNumber, Size: e.Size, Checksum: e.Checksum})
-	upload.UpdatedAt = e.UpdatedAt
-	return nil
-}
-
-func (handler *EventSourcedQueryHandler) applyCompleted(e *UploadCompletedEvent) error {
-	upload, ok := handler.uploadByID[e.UploadID]
-	if !ok {
-		return nil
-	}
-	upload.Status = UploadStatusCompleted
-	upload.UpdatedAt = e.UpdatedAt
-	handler.fileByID[e.FileID] = &File{
-		ID:          e.FileID,
-		UserID:      upload.UserID,
-		UploadID:    e.UploadID,
-		Key:         upload.Key,
-		ContentType: upload.ContentType,
-		Size:        e.Size,
-		Checksum:    e.Checksum,
-		CreatedAt:   e.UpdatedAt,
-	}
-	return nil
-}
-
-func (handler *EventSourcedQueryHandler) applyAborted(event *UploadAbortedEvent) error {
-	upload, ok := handler.uploadByID[event.UploadID]
-	if !ok {
-		return nil
-	}
-	upload.Status = UploadStatusAborted
-	upload.UpdatedAt = event.UpdatedAt
-	return nil
 }

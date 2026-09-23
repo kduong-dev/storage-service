@@ -11,25 +11,26 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kduong/trading-backend/internal/contextx"
+	"github.com/kduong-dev/goutil/fatal"
 )
 
 type HTTPClient struct {
 	baseURL    url.URL
+	apiKey     string
 	httpClient *http.Client
 }
 
 type NewHTTPClientInput struct {
 	Timeout time.Duration
 	BaseURL url.URL
+	APIKey  string
 }
 
 func NewHTTPClient(input NewHTTPClientInput) *HTTPClient {
 	return &HTTPClient{
-		baseURL: input.BaseURL,
-		httpClient: &http.Client{
-			Timeout: input.Timeout,
-		},
+		baseURL:    input.BaseURL,
+		apiKey:     input.APIKey,
+		httpClient: &http.Client{Timeout: input.Timeout},
 	}
 }
 
@@ -39,109 +40,38 @@ type initialiseUploadRequestBody struct {
 }
 
 func (client *HTTPClient) InitialiseUpload(ctx context.Context, key string, contentType string) (output *Upload, err error) {
-	target := url.URL{
-		Scheme: client.baseURL.Scheme,
-		Host:   client.baseURL.Host,
-		Path:   "/storage/v1/uploads",
-	}
-	requestBody := initialiseUploadRequestBody{
-		Key:         key,
-		ContentType: contentType,
-	}
-	encodedBody, err := json.Marshal(requestBody)
-	if err != nil {
-		panic(err)
-	}
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, target.String(), bytes.NewReader(encodedBody))
-	if err != nil {
-		panic(err)
-	}
+	requestBody := fatal.UnlessMarshal(initialiseUploadRequestBody{Key: key, ContentType: contentType})
+	request := client.newRequest(ctx, http.MethodPost, "/storage/v1/uploads", bytes.NewReader(requestBody))
 	request.Header.Set("Content-Type", "application/json")
-	accessToken := contextx.GetAccessToken(ctx)
-	request.Header.Set("Authorization", "Bearer "+accessToken)
-	response, err := client.httpClient.Do(request)
-	if err != nil {
-		return
-	}
-	defer response.Body.Close()
-	if response.StatusCode != http.StatusCreated {
-		err = client.mapResponseError(response)
-		return
-	}
-	err = json.NewDecoder(response.Body).Decode(&output)
+	err = client.doJSON(request, http.StatusCreated, &output)
 	return
 }
 
 func (client *HTTPClient) UploadPart(ctx context.Context, uploadID string, partNumber int, body io.Reader) (output *UploadPartResponse, err error) {
-	target := url.URL{
-		Scheme: client.baseURL.Scheme,
-		Host:   client.baseURL.Host,
-		Path:   fmt.Sprintf("/storage/v1/uploads/%s/parts/%d", uploadID, partNumber),
-	}
-	request, err := http.NewRequestWithContext(ctx, http.MethodPut, target.String(), body)
-	if err != nil {
-		panic(err)
-	}
+	path := fmt.Sprintf("/storage/v1/uploads/%s/parts/%d", url.PathEscape(uploadID), partNumber)
+	request := client.newRequest(ctx, http.MethodPut, path, body)
 	request.Header.Set("Content-Type", "application/octet-stream")
-	accessToken := contextx.GetAccessToken(ctx)
-	request.Header.Set("Authorization", "Bearer "+accessToken)
-	response, err := client.httpClient.Do(request)
-	if err != nil {
-		return
-	}
-	defer response.Body.Close()
-	if response.StatusCode != http.StatusOK {
-		err = client.mapResponseError(response)
-		return
-	}
-	err = json.NewDecoder(response.Body).Decode(&output)
+	err = client.doJSON(request, http.StatusOK, &output)
 	return
 }
 
 func (client *HTTPClient) CompleteUpload(ctx context.Context, uploadID string) (output *File, err error) {
-	target := url.URL{
-		Scheme: client.baseURL.Scheme,
-		Host:   client.baseURL.Host,
-		Path:   fmt.Sprintf("/storage/v1/uploads/%s/complete", uploadID),
-	}
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, target.String(), nil)
-	if err != nil {
-		panic(err)
-	}
-	accessToken := contextx.GetAccessToken(ctx)
-	request.Header.Set("Authorization", "Bearer "+accessToken)
-	response, err := client.httpClient.Do(request)
-	if err != nil {
-		return
-	}
-	defer response.Body.Close()
-	if response.StatusCode != http.StatusCreated {
-		err = client.mapResponseError(response)
-		return
-	}
-	err = json.NewDecoder(response.Body).Decode(&output)
+	path := fmt.Sprintf("/storage/v1/uploads/%s/complete", url.PathEscape(uploadID))
+	request := client.newRequest(ctx, http.MethodPost, path, nil)
+	err = client.doJSON(request, http.StatusCreated, &output)
 	return
 }
 
 func (client *HTTPClient) DownloadFile(ctx context.Context, fileID string) (output *DownloadFileResponse, err error) {
-	target := url.URL{
-		Scheme: client.baseURL.Scheme,
-		Host:   client.baseURL.Host,
-		Path:   fmt.Sprintf("/storage/v1/files/%s", fileID),
-	}
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, target.String(), nil)
-	if err != nil {
-		panic(err)
-	}
-	accessToken := contextx.GetAccessToken(ctx)
-	request.Header.Set("Authorization", "Bearer "+accessToken)
+	path := fmt.Sprintf("/storage/v1/files/%s", url.PathEscape(fileID))
+	request := client.newRequest(ctx, http.MethodGet, path, nil)
 	response, err := client.httpClient.Do(request)
 	if err != nil {
 		return
 	}
 	if response.StatusCode != http.StatusOK {
 		defer response.Body.Close()
-		err = client.mapResponseError(response)
+		err = mapResponseError(response)
 		return
 	}
 	output = &DownloadFileResponse{
@@ -152,17 +82,42 @@ func (client *HTTPClient) DownloadFile(ctx context.Context, fileID string) (outp
 	return
 }
 
-func (client *HTTPClient) mapResponseError(response *http.Response) (err error) {
+func (client *HTTPClient) newRequest(ctx context.Context, method string, path string, body io.Reader) *http.Request {
+	target := client.baseURL.JoinPath(path)
+	request, err := http.NewRequestWithContext(ctx, method, target.String(), body)
+	fatal.OnError(err)
+	request.Header.Set("Authorization", "Bearer "+client.apiKey)
+	return request
+}
+
+func (client *HTTPClient) doJSON(request *http.Request, expectedStatusCode int, output any) error {
+	response, err := client.httpClient.Do(request)
+	if err != nil {
+		return err
+	}
+	defer response.Body.Close()
+	if response.StatusCode != expectedStatusCode {
+		return mapResponseError(response)
+	}
+	return json.NewDecoder(response.Body).Decode(output)
+}
+
+func mapResponseError(response *http.Response) error {
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
-		return
+		return err
 	}
 	message := strings.TrimSpace(string(body))
 	switch response.StatusCode {
+	case http.StatusBadRequest, http.StatusRequestEntityTooLarge:
+		return fmt.Errorf("%w: %s", ErrBadRequest, message)
+	case http.StatusUnauthorized:
+		return fmt.Errorf("%w: %s", ErrUnauthorized, message)
 	case http.StatusNotFound:
+		if strings.Contains(response.Request.URL.Path, "/uploads/") {
+			return fmt.Errorf("%w: %s", ErrUploadNotFound, message)
+		}
 		return fmt.Errorf("%w: %s", ErrFileNotFound, message)
-	case http.StatusForbidden:
-		return fmt.Errorf("%w: %s", ErrFileForbidden, message)
 	case http.StatusConflict:
 		return fmt.Errorf("%w: %s", ErrUploadNotActive, message)
 	default:

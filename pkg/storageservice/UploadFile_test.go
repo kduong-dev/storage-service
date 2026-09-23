@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kduong/trading-backend/cmd/storage-service/pkg/storageservice"
+	"github.com/kduong-dev/storage-service/pkg/storageservice"
 	. "github.com/smartystreets/goconvey/convey"
 )
 

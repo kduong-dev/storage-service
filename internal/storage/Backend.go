@@ -4,8 +4,8 @@ import (
 	"io"
 	"os"
 
-	"github.com/kduong/trading-backend/internal/config"
-	"github.com/kduong/trading-backend/internal/fatal"
+	"github.com/kduong-dev/goutil/config"
+	"github.com/kduong-dev/goutil/fatal"
 )
 
 // Backend stores and retrieves the raw bytes of uploaded files.
@@ -40,6 +40,7 @@ func FromEnv() Backend {
 	case "INMEMORY":
 		return NewInMemoryBackend()
 	default:
-		panic("unsupported storage backend type: " + backendType)
+		fatal.LogErrorf("unsupported storage backend type: %s", backendType)
+		return nil
 	}
 }

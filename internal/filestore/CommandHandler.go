@@ -9,7 +9,15 @@ type CommandHandler interface {
 	// RecordPart records that a part has been successfully stored by the backend.
 	RecordPart(ctx context.Context, uploadID string, part Part, updatedAt string) error
 	// CompleteUpload finalises the upload, producing a stored File record.
-	CompleteUpload(ctx context.Context, uploadID string, fileID string, size int64, checksum string, updatedAt string) error
+	CompleteUpload(ctx context.Context, input CompleteUploadInput) error
 	// AbortUpload marks the upload as aborted.
 	AbortUpload(ctx context.Context, uploadID string, updatedAt string) error
+}
+
+type CompleteUploadInput struct {
+	UploadID  string
+	FileID    string
+	Size      int64
+	Checksum  string
+	UpdatedAt string
 }

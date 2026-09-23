@@ -12,7 +12,7 @@ const (
 // Upload tracks a multipart upload session.
 type Upload struct {
 	ID          string       `json:"id"`
-	UserID      string       `json:"user_id"`
+	Namespace   string       `json:"namespace"`
 	Key         string       `json:"key"`
 	ContentType string       `json:"content_type"`
 	Status      UploadStatus `json:"status"`
@@ -32,7 +32,7 @@ type Part struct {
 // File is the completed, stored object produced after an upload is finalised.
 type File struct {
 	ID          string `json:"id"`
-	UserID      string `json:"user_id"`
+	Namespace   string `json:"namespace"`
 	UploadID    string `json:"upload_id"`
 	Key         string `json:"key"`
 	ContentType string `json:"content_type"`

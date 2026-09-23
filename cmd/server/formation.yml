@@ -3,9 +3,10 @@
   include_tasks: "{{ playbook_dir }}/tasks/render-service.yml"
   vars:
     service_name: storage-service
-    cmd_dir: cmd/storage-service
+    cmd_dir: cmd/server
     env_dest: backend/storage-service/.env
     resources:
-      secrets: [token]
+      secrets: [storage_clients]
       logs:    [storage_event_log]
       storage: [filesystem]
+      config:  [storage_service]

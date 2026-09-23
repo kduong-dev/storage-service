@@ -5,12 +5,10 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/ansel1/merry"
 	"github.com/gorilla/mux"
-	"github.com/kduong/trading-backend/internal/authz"
-	"github.com/kduong/trading-backend/internal/httpx"
+	"github.com/kduong-dev/goutil/httpx"
 )
-
-var zeroTime = time.Time{}
 
 func (handler *Handler) DownloadFile(responseWriter http.ResponseWriter, request *http.Request) {
 	var err error
@@ -20,24 +18,18 @@ func (handler *Handler) DownloadFile(responseWriter http.ResponseWriter, request
 		}
 	}()
 	ctx := request.Context()
-	if err = authz.RequireScope(ctx, authz.ScopeFilesRead); err != nil {
-		return
-	}
-	vars := mux.Vars(request)
-	fileID := vars["file_id"]
-	file, err := handler.queryHandler.GetFile(ctx, fileID)
+	file, err := handler.getFile(ctx, mux.Vars(request)["file_id"])
 	if err != nil {
-		err = merrifyError(err)
 		return
 	}
 	readSeekCloser, err := handler.backend.Open(file.Key)
 	if err != nil {
-		err = merrifyError(err)
+		err = merry.Wrap(err).WithHTTPCode(http.StatusInternalServerError)
 		return
 	}
 	defer readSeekCloser.Close()
 	filename := filepath.Base(file.Key)
 	responseWriter.Header().Set("Content-Type", file.ContentType)
 	responseWriter.Header().Set("Content-Disposition", `attachment; filename="`+filename+`"`)
-	http.ServeContent(responseWriter, request, filename, zeroTime, readSeekCloser)
+	http.ServeContent(responseWriter, request, filename, time.Time{}, readSeekCloser)
 }

@@ -1,7 +1,6 @@
 package httpapi
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 	"strconv"
@@ -9,10 +8,11 @@ import (
 
 	"github.com/ansel1/merry"
 	"github.com/gorilla/mux"
-	"github.com/kduong/trading-backend/cmd/storage-service/internal/filestore"
-	"github.com/kduong/trading-backend/internal/authz"
-	"github.com/kduong/trading-backend/internal/httpx"
+	"github.com/kduong-dev/goutil/httpx"
+	"github.com/kduong-dev/storage-service/internal/filestore"
 )
+
+const maxPartSizeBytes = 5 * 1024 * 1024
 
 type UploadPartResponse struct {
 	PartNumber int    `json:"part_number"`
@@ -28,9 +28,6 @@ func (handler *Handler) UploadPart(responseWriter http.ResponseWriter, request *
 		}
 	}()
 	ctx := request.Context()
-	if err = authz.RequireScope(ctx, authz.ScopeFilesWrite); err != nil {
-		return
-	}
 	vars := mux.Vars(request)
 	uploadID := vars["upload_id"]
 	partNumber, err := strconv.Atoi(vars["part_number"])
@@ -38,13 +35,10 @@ func (handler *Handler) UploadPart(responseWriter http.ResponseWriter, request *
 		err = merry.New("part_number must be a positive integer").WithHTTPCode(http.StatusBadRequest)
 		return
 	}
-	// Verify ownership via the query handler before accepting bytes.
-	if _, err = handler.queryHandler.GetUpload(ctx, uploadID); err != nil {
-		err = merrifyError(err)
+	if _, err = handler.getUpload(ctx, uploadID); err != nil {
 		return
 	}
-	const maxPartSize = 5 * 1024 * 1024 // 5 MB
-	limitedBody := http.MaxBytesReader(responseWriter, request.Body, maxPartSize)
+	limitedBody := http.MaxBytesReader(responseWriter, request.Body, maxPartSizeBytes)
 	size, checksum, err := handler.backend.WritePart(uploadID, partNumber, limitedBody)
 	if err != nil {
 		var maxBytesError *http.MaxBytesError
@@ -55,21 +49,13 @@ func (handler *Handler) UploadPart(responseWriter http.ResponseWriter, request *
 		}
 		return
 	}
-
-	part := filestore.Part{
-		Number:   partNumber,
-		Size:     size,
-		Checksum: checksum,
-	}
+	part := filestore.Part{Number: partNumber, Size: size, Checksum: checksum}
 	now := time.Now().UTC().Format(time.RFC3339)
 	if err = handler.commandHandler.RecordPart(ctx, uploadID, part, now); err != nil {
 		err = merrifyError(err)
 		return
 	}
-
-	responseWriter.Header().Set("Content-Type", "application/json")
-	responseWriter.WriteHeader(http.StatusOK)
-	json.NewEncoder(responseWriter).Encode(UploadPartResponse{
+	httpx.SendJSONResponse(responseWriter, http.StatusOK, UploadPartResponse{
 		PartNumber: partNumber,
 		Size:       size,
 		Checksum:   checksum,

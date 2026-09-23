@@ -32,10 +32,10 @@ func (decorator *CommandHandlerThreadSafeDecorator) RecordPart(ctx context.Conte
 	return decorator.decorated.RecordPart(ctx, uploadID, part, updatedAt)
 }
 
-func (decorator *CommandHandlerThreadSafeDecorator) CompleteUpload(ctx context.Context, uploadID string, fileID string, size int64, checksum string, updatedAt string) error {
+func (decorator *CommandHandlerThreadSafeDecorator) CompleteUpload(ctx context.Context, input CompleteUploadInput) error {
 	decorator.mutex.Lock()
 	defer decorator.mutex.Unlock()
-	return decorator.decorated.CompleteUpload(ctx, uploadID, fileID, size, checksum, updatedAt)
+	return decorator.decorated.CompleteUpload(ctx, input)
 }
 
 func (decorator *CommandHandlerThreadSafeDecorator) AbortUpload(ctx context.Context, uploadID string, updatedAt string) error {
