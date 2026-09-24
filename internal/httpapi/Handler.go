@@ -2,13 +2,10 @@ package httpapi
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"strings"
 
-	"github.com/ansel1/merry"
 	"github.com/gorilla/mux"
-	"github.com/kduong-dev/goutil/fatal"
 	"github.com/kduong-dev/storage-service/internal/apikey"
 	"github.com/kduong-dev/storage-service/internal/file"
 	"github.com/kduong-dev/storage-service/internal/storage"
@@ -52,12 +49,11 @@ func NewRouter(input NewRouterInput) *mux.Router {
 // existence isn't disclosed.
 func (handler *Handler) getUpload(ctx context.Context, uploadID string) (*storageservice.Upload, error) {
 	object, err := handler.uploadObjectStore.Get(ctx, uploadID)
-	if errors.Is(err, upload.ErrNotFound) {
-		return nil, merry.Wrap(err).WithHTTPCode(http.StatusNotFound).WithUserMessage("upload not found")
+	if err = toResponseErrorOrFatal(err); err != nil {
+		return nil, err
 	}
-	fatal.OnError(err)
 	if !handler.isInNamespace(ctx, object.Key) {
-		return nil, merry.Wrap(upload.ErrNotFound).WithHTTPCode(http.StatusNotFound).WithUserMessage("upload not found")
+		return nil, toResponseError(upload.ErrNotFound)
 	}
 	return object, nil
 }

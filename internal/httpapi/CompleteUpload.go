@@ -1,7 +1,6 @@
 package httpapi
 
 import (
-	"errors"
 	"net/http"
 	"sort"
 	"time"
@@ -46,11 +45,8 @@ func (handler *Handler) CompleteUpload(responseWriter http.ResponseWriter, reque
 		Key:         uploadObject.Key,
 		PartNumbers: partNumbers,
 	})
-	if errors.Is(err, storage.ErrUploadNotFound) {
-		err = merry.Wrap(err).WithHTTPCode(http.StatusNotFound).WithUserMessage("upload not found")
-		return
-	}
 	if err != nil {
+		err = toResponseError(err)
 		return
 	}
 	now := time.Now().UTC().Format(time.RFC3339)
@@ -61,11 +57,9 @@ func (handler *Handler) CompleteUpload(responseWriter http.ResponseWriter, reque
 		Checksum:  output.Checksum,
 		UpdatedAt: now,
 	})
-	if errors.Is(err, upload.ErrNotFound) {
-		err = merry.Wrap(err).WithHTTPCode(http.StatusNotFound).WithUserMessage("upload not found")
+	if err = toResponseErrorOrFatal(err); err != nil {
 		return
 	}
-	fatal.OnError(err)
 	fileObject := &storageservice.File{
 		ID:          fileID,
 		UploadID:    uploadID,

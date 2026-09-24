@@ -1,14 +1,11 @@
 package httpapi
 
 import (
-	"errors"
 	"net/http"
 	"path/filepath"
 	"time"
 
-	"github.com/ansel1/merry"
 	"github.com/gorilla/mux"
-	"github.com/kduong-dev/goutil/fatal"
 	"github.com/kduong-dev/goutil/httpx"
 	"github.com/kduong-dev/storage-service/internal/file"
 )
@@ -24,13 +21,11 @@ func (handler *Handler) DownloadFile(responseWriter http.ResponseWriter, request
 	vars := mux.Vars(request)
 	fileID := vars["file_id"]
 	object, err := handler.fileObjectStore.Get(ctx, fileID)
-	if errors.Is(err, file.ErrNotFound) {
-		err = merry.Wrap(err).WithHTTPCode(http.StatusNotFound).WithUserMessage("file not found")
+	if err = toResponseErrorOrFatal(err); err != nil {
 		return
 	}
-	fatal.OnError(err)
 	if !handler.isInNamespace(ctx, object.Key) {
-		err = merry.Wrap(file.ErrNotFound).WithHTTPCode(http.StatusNotFound).WithUserMessage("file not found")
+		err = toResponseError(file.ErrNotFound)
 		return
 	}
 	readSeekCloser, err := handler.storage.OpenFile(object.Key)

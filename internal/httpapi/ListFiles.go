@@ -1,12 +1,10 @@
 package httpapi
 
 import (
-	"errors"
 	"net/http"
 	"strconv"
 
 	"github.com/ansel1/merry"
-	"github.com/kduong-dev/goutil/fatal"
 	"github.com/kduong-dev/goutil/httpx"
 	"github.com/kduong-dev/storage-service/internal/apikey"
 	"github.com/kduong-dev/storage-service/internal/file"
@@ -40,11 +38,9 @@ func (handler *Handler) ListFiles(responseWriter http.ResponseWriter, request *h
 		After:     query.Get("cursor"),
 		Limit:     limit,
 	})
-	if errors.Is(err, file.ErrInvalidAfter) {
-		err = merry.Wrap(err).WithHTTPCode(http.StatusBadRequest).WithUserMessage("invalid cursor")
+	if err = toResponseErrorOrFatal(err); err != nil {
 		return
 	}
-	fatal.OnError(err)
 	httpx.SendJSONResponse(responseWriter, http.StatusOK, storageservice.ListFilesResponse{
 		Files:      output.Objects,
 		NextCursor: output.NextAfter,

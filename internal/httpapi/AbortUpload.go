@@ -1,13 +1,10 @@
 package httpapi
 
 import (
-	"errors"
 	"net/http"
 	"time"
 
-	"github.com/ansel1/merry"
 	"github.com/gorilla/mux"
-	"github.com/kduong-dev/goutil/fatal"
 	"github.com/kduong-dev/goutil/httpx"
 	"github.com/kduong-dev/storage-service/internal/upload"
 )
@@ -29,11 +26,9 @@ func (handler *Handler) AbortUpload(responseWriter http.ResponseWriter, request 
 		UploadID:  uploadID,
 		UpdatedAt: time.Now().UTC().Format(time.RFC3339),
 	})
-	if errors.Is(err, upload.ErrNotFound) {
-		err = merry.Wrap(err).WithHTTPCode(http.StatusNotFound).WithUserMessage("upload not found")
+	if err = toResponseErrorOrFatal(err); err != nil {
 		return
 	}
-	fatal.OnError(err)
 	if err = handler.storage.AbortUpload(ctx, uploadID); err != nil {
 		return
 	}
