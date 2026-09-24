@@ -14,7 +14,7 @@ import (
 	"github.com/kduong-dev/storage-service/pkg/storageservice"
 )
 
-func validateInitialiseUploadRequest(input storageservice.InitialiseUploadRequest) error {
+func validateInitialiseUploadRequest(input storageservice.InitialiseUploadInput) error {
 	// Keys become paths under the caller's namespace, so they must not be able
 	// to climb out of it.
 	if !filepath.IsLocal(input.Key) || strings.Contains(input.Key, `\`) {
@@ -34,7 +34,7 @@ func (handler *Handler) InitialiseUpload(responseWriter http.ResponseWriter, req
 		}
 	}()
 	ctx := request.Context()
-	input, err := httpx.DecodeJSONBody[storageservice.InitialiseUploadRequest](request)
+	input, err := httpx.DecodeJSONBody[storageservice.InitialiseUploadInput](request)
 	if err != nil {
 		return
 	}

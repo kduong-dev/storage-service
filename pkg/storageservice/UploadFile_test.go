@@ -13,7 +13,7 @@ import (
 )
 
 type fakeClient struct {
-	initialisedUploads []fakeInitialiseUploadCall
+	initialisedUploads []storageservice.InitialiseUploadInput
 	uploadedParts      []fakeUploadPartCall
 	completedUploads   []string
 
@@ -22,53 +22,45 @@ type fakeClient struct {
 	completeUploadError   error
 }
 
-type fakeInitialiseUploadCall struct {
-	key         string
-	contentType string
-}
-
 type fakeUploadPartCall struct {
 	uploadID   string
 	partNumber int
 	body       []byte
 }
 
-func (client *fakeClient) InitialiseUpload(ctx context.Context, key string, contentType string) (*storageservice.Upload, error) {
+func (client *fakeClient) InitialiseUpload(ctx context.Context, input storageservice.InitialiseUploadInput) (*storageservice.Upload, error) {
 	if client.initialiseUploadError != nil {
 		return nil, client.initialiseUploadError
 	}
-	client.initialisedUploads = append(client.initialisedUploads, fakeInitialiseUploadCall{
-		key:         key,
-		contentType: contentType,
-	})
+	client.initialisedUploads = append(client.initialisedUploads, input)
 	return &storageservice.Upload{ID: "upload-1"}, nil
 }
 
-func (client *fakeClient) UploadPart(ctx context.Context, uploadID string, partNumber int, body io.Reader) (*storageservice.UploadPartResponse, error) {
+func (client *fakeClient) UploadPart(ctx context.Context, input storageservice.UploadPartInput) (*storageservice.UploadPartOutput, error) {
 	if client.uploadPartError != nil {
 		return nil, client.uploadPartError
 	}
-	bodyBytes, err := io.ReadAll(body)
+	bodyBytes, err := io.ReadAll(input.Body)
 	if err != nil {
 		return nil, err
 	}
 	client.uploadedParts = append(client.uploadedParts, fakeUploadPartCall{
-		uploadID:   uploadID,
-		partNumber: partNumber,
+		uploadID:   input.UploadID,
+		partNumber: input.PartNumber,
 		body:       bodyBytes,
 	})
-	return &storageservice.UploadPartResponse{PartNumber: partNumber, Size: int64(len(bodyBytes))}, nil
+	return &storageservice.UploadPartOutput{PartNumber: input.PartNumber, Size: int64(len(bodyBytes))}, nil
 }
 
-func (client *fakeClient) CompleteUpload(ctx context.Context, uploadID string) (*storageservice.File, error) {
+func (client *fakeClient) CompleteUpload(ctx context.Context, input storageservice.CompleteUploadInput) (*storageservice.File, error) {
 	if client.completeUploadError != nil {
 		return nil, client.completeUploadError
 	}
-	client.completedUploads = append(client.completedUploads, uploadID)
-	return &storageservice.File{ID: "file-1", UploadID: uploadID}, nil
+	client.completedUploads = append(client.completedUploads, input.UploadID)
+	return &storageservice.File{ID: "file-1", UploadID: input.UploadID}, nil
 }
 
-func (client *fakeClient) AbortUpload(ctx context.Context, uploadID string) error {
+func (client *fakeClient) AbortUpload(ctx context.Context, input storageservice.AbortUploadInput) error {
 	return errors.New("not implemented")
 }
 
@@ -76,7 +68,7 @@ func (client *fakeClient) ListFiles(ctx context.Context, input storageservice.Li
 	return nil, errors.New("not implemented")
 }
 
-func (client *fakeClient) DownloadFile(ctx context.Context, fileID string) (*storageservice.DownloadFileResponse, error) {
+func (client *fakeClient) DownloadFile(ctx context.Context, input storageservice.DownloadFileInput) (*storageservice.DownloadFileResponse, error) {
 	return nil, errors.New("not implemented")
 }
 
@@ -97,7 +89,7 @@ func TestUploadFile(t *testing.T) {
 				So(file, ShouldNotBeNil)
 				So(file.ID, ShouldEqual, "file-1")
 				So(len(client.initialisedUploads), ShouldEqual, 1)
-				So(client.initialisedUploads[0].key, ShouldEqual, "reports/job-1/report.html")
+				So(client.initialisedUploads[0].Key, ShouldEqual, "reports/job-1/report.html")
 				So(len(client.uploadedParts), ShouldEqual, 1)
 				So(client.uploadedParts[0].partNumber, ShouldEqual, 1)
 				So(client.uploadedParts[0].body, ShouldResemble, []byte(content))

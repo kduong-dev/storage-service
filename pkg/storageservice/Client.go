@@ -18,12 +18,6 @@ var (
 	ErrServerError    = errors.New("server error")
 )
 
-// InitialiseUploadRequest is the request body for starting an upload session.
-type InitialiseUploadRequest struct {
-	Key         string `json:"key"`
-	ContentType string `json:"content_type"`
-}
-
 // Upload tracks a multipart upload session.
 type Upload struct {
 	ID          string `json:"id"`
@@ -53,11 +47,60 @@ type File struct {
 	CreatedAt   string `json:"created_at"`
 }
 
-// UploadPartResponse holds metadata returned after a part is accepted.
-type UploadPartResponse struct {
+// Client is the public interface for the storage-service API. Every call is
+// scoped to the namespace of the API key the client was configured with;
+// deciding which end user may access a file is the calling service's job.
+type Client interface {
+	// InitialiseUpload begins a new multipart upload session. key is a
+	// relative path within the caller's namespace.
+	InitialiseUpload(ctx context.Context, input InitialiseUploadInput) (*Upload, error)
+
+	// UploadPart streams one chunk to an existing upload session.
+	UploadPart(ctx context.Context, input UploadPartInput) (*UploadPartOutput, error)
+
+	// CompleteUpload finalises an upload session and assembles all parts into a File.
+	CompleteUpload(ctx context.Context, input CompleteUploadInput) (*File, error)
+
+	// AbortUpload cancels an upload session and discards its uploaded parts.
+	AbortUpload(ctx context.Context, input AbortUploadInput) error
+
+	// DownloadFile streams the assembled file for the given file ID.
+	// The caller is responsible for closing DownloadFileResponse.Body.
+	DownloadFile(ctx context.Context, input DownloadFileInput) (*DownloadFileResponse, error)
+
+	// ListFiles returns one page of the caller's files, ordered by key. Pass
+	// the returned NextCursor back as Cursor to fetch the next page.
+	ListFiles(ctx context.Context, input ListFilesInput) (*ListFilesResponse, error)
+}
+
+// InitialiseUploadInput is also the request body sent to the server.
+type InitialiseUploadInput struct {
+	Key         string `json:"key"`
+	ContentType string `json:"content_type"`
+}
+
+type UploadPartInput struct {
+	UploadID   string
+	PartNumber int
+	Body       io.Reader
+}
+
+type UploadPartOutput struct {
 	PartNumber int    `json:"part_number"`
 	Size       int64  `json:"size"`
 	Checksum   string `json:"checksum"`
+}
+
+type CompleteUploadInput struct {
+	UploadID string
+}
+
+type AbortUploadInput struct {
+	UploadID string
+}
+
+type DownloadFileInput struct {
+	FileID string
 }
 
 // DownloadFileResponse holds the streamed file content and its metadata.
@@ -65,32 +108,6 @@ type DownloadFileResponse struct {
 	ContentType        string
 	ContentDisposition string
 	Body               io.ReadCloser
-}
-
-// Client is the public interface for the storage-service API. Every call is
-// scoped to the namespace of the API key the client was configured with;
-// deciding which end user may access a file is the calling service's job.
-type Client interface {
-	// InitialiseUpload begins a new multipart upload session. key is a
-	// relative path within the caller's namespace.
-	InitialiseUpload(ctx context.Context, key string, contentType string) (*Upload, error)
-
-	// UploadPart streams one chunk to an existing upload session.
-	UploadPart(ctx context.Context, uploadID string, partNumber int, body io.Reader) (*UploadPartResponse, error)
-
-	// CompleteUpload finalises an upload session and assembles all parts into a File.
-	CompleteUpload(ctx context.Context, uploadID string) (*File, error)
-
-	// AbortUpload cancels an upload session and discards its uploaded parts.
-	AbortUpload(ctx context.Context, uploadID string) error
-
-	// DownloadFile streams the assembled file for the given file ID.
-	// The caller is responsible for closing DownloadFileResponse.Body.
-	DownloadFile(ctx context.Context, fileID string) (*DownloadFileResponse, error)
-
-	// ListFiles returns one page of the caller's files, ordered by key. Pass
-	// the returned NextCursor back as Cursor to fetch the next page.
-	ListFiles(ctx context.Context, input ListFilesInput) (*ListFilesResponse, error)
 }
 
 type ListFilesInput struct {
@@ -113,7 +130,7 @@ func ClientFromEnv() Client {
 	case "HTTP":
 		return NewHTTPClient(NewHTTPClientInput{
 			Timeout: config.EnvDuration("STORAGE_SERVICE_HTTP_CLIENT_TIMEOUT", 20*time.Second),
-			BaseURL: *config.EnvURLOrFatal("STORAGE_SERVICE_URL"),
+			BaseURL: config.EnvURLOrFatal("STORAGE_SERVICE_URL"),
 			APIKey:  config.EnvStringOrFatal("STORAGE_SERVICE_API_KEY"),
 		})
 	default:

@@ -18,50 +18,52 @@ import (
 )
 
 type HTTPClient struct {
-	baseURL    url.URL
+	baseURL    *url.URL
 	apiKey     string
 	httpClient *http.Client
 }
 
 type NewHTTPClientInput struct {
 	Timeout time.Duration
-	BaseURL url.URL
+	BaseURL *url.URL
 	APIKey  string
 }
 
 func NewHTTPClient(input NewHTTPClientInput) *HTTPClient {
 	return &HTTPClient{
-		baseURL:    input.BaseURL,
-		apiKey:     input.APIKey,
-		httpClient: &http.Client{Timeout: input.Timeout},
+		baseURL: input.BaseURL,
+		apiKey:  input.APIKey,
+		httpClient: &http.Client{
+			Timeout: input.Timeout,
+		},
 	}
 }
 
-func (client *HTTPClient) InitialiseUpload(ctx context.Context, key string, contentType string) (output *Upload, err error) {
-	requestBody := fatal.UnlessMarshal(InitialiseUploadRequest{Key: key, ContentType: contentType})
+func (client *HTTPClient) InitialiseUpload(ctx context.Context, input InitialiseUploadInput) (output *Upload, err error) {
+	requestBody := fatal.UnlessMarshal(input)
 	request := client.newRequest(ctx, http.MethodPost, "/storage/v1/uploads", bytes.NewReader(requestBody))
 	request.Header.Set("Content-Type", "application/json")
 	err = client.doJSON(request, http.StatusCreated, &output)
 	return
 }
 
-func (client *HTTPClient) UploadPart(ctx context.Context, uploadID string, partNumber int, body io.Reader) (output *UploadPartResponse, err error) {
-	path := fmt.Sprintf("/storage/v1/uploads/%s/parts/%d", url.PathEscape(uploadID), partNumber)
-	request := client.newRequest(ctx, http.MethodPut, path, body)
+func (client *HTTPClient) UploadPart(ctx context.Context, input UploadPartInput) (output *UploadPartOutput, err error) {
+	path := fmt.Sprintf("/storage/v1/uploads/%s/parts/%d", url.PathEscape(input.UploadID), input.PartNumber)
+	request := client.newRequest(ctx, http.MethodPut, path, input.Body)
 	request.Header.Set("Content-Type", "application/octet-stream")
 	err = client.doJSON(request, http.StatusOK, &output)
 	return
 }
 
-func (client *HTTPClient) CompleteUpload(ctx context.Context, uploadID string) (output *File, err error) {
-	path := fmt.Sprintf("/storage/v1/uploads/%s/complete", url.PathEscape(uploadID))
+func (client *HTTPClient) CompleteUpload(ctx context.Context, input CompleteUploadInput) (output *File, err error) {
+	path := fmt.Sprintf("/storage/v1/uploads/%s/complete", url.PathEscape(input.UploadID))
 	request := client.newRequest(ctx, http.MethodPost, path, nil)
 	err = client.doJSON(request, http.StatusCreated, &output)
 	return
 }
 
-func (client *HTTPClient) AbortUpload(ctx context.Context, uploadID string) error {
-	path := fmt.Sprintf("/storage/v1/uploads/%s/abort", url.PathEscape(uploadID))
+func (client *HTTPClient) AbortUpload(ctx context.Context, input AbortUploadInput) error {
+	path := fmt.Sprintf("/storage/v1/uploads/%s/abort", url.PathEscape(input.UploadID))
 	request := client.newRequest(ctx, http.MethodPost, path, nil)
 	response, err := client.do(request, http.StatusNoContent)
 	if err != nil {
@@ -70,8 +72,8 @@ func (client *HTTPClient) AbortUpload(ctx context.Context, uploadID string) erro
 	return response.Body.Close()
 }
 
-func (client *HTTPClient) DownloadFile(ctx context.Context, fileID string) (output *DownloadFileResponse, err error) {
-	path := fmt.Sprintf("/storage/v1/files/%s", url.PathEscape(fileID))
+func (client *HTTPClient) DownloadFile(ctx context.Context, input DownloadFileInput) (output *DownloadFileResponse, err error) {
+	path := fmt.Sprintf("/storage/v1/files/%s", url.PathEscape(input.FileID))
 	request := client.newRequest(ctx, http.MethodGet, path, nil)
 	response, err := client.do(request, http.StatusOK)
 	if err != nil {

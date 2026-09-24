@@ -57,7 +57,7 @@ func (handler *Handler) UploadPart(responseWriter http.ResponseWriter, request *
 	if err = merrifiedSentinels.MerrifyOrFatal(err); err != nil {
 		return
 	}
-	httpx.SendJSONResponse(responseWriter, http.StatusOK, storageservice.UploadPartResponse{
+	httpx.SendJSONResponse(responseWriter, http.StatusOK, storageservice.UploadPartOutput{
 		PartNumber: partNumber,
 		Size:       output.Size,
 		Checksum:   output.Checksum,

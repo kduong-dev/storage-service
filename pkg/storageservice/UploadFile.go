@@ -19,7 +19,10 @@ type UploadFileInput struct {
 // It splits the body into parts of up to 5 MB each, uploading them sequentially,
 // then completes the upload and returns the resulting File.
 func UploadFile(ctx context.Context, client Client, input UploadFileInput) (*File, error) {
-	upload, err := client.InitialiseUpload(ctx, input.Key, input.ContentType)
+	upload, err := client.InitialiseUpload(ctx, InitialiseUploadInput{
+		Key:         input.Key,
+		ContentType: input.ContentType,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -28,7 +31,11 @@ func UploadFile(ctx context.Context, client Client, input UploadFileInput) (*Fil
 	for {
 		bytesRead, readErr := io.ReadFull(input.Body, buffer)
 		if bytesRead > 0 {
-			_, err = client.UploadPart(ctx, upload.ID, partNumber, bytes.NewReader(buffer[:bytesRead]))
+			_, err = client.UploadPart(ctx, UploadPartInput{
+				UploadID:   upload.ID,
+				PartNumber: partNumber,
+				Body:       bytes.NewReader(buffer[:bytesRead]),
+			})
 			if err != nil {
 				return nil, err
 			}
@@ -41,5 +48,7 @@ func UploadFile(ctx context.Context, client Client, input UploadFileInput) (*Fil
 			return nil, readErr
 		}
 	}
-	return client.CompleteUpload(ctx, upload.ID)
+	return client.CompleteUpload(ctx, CompleteUploadInput{
+		UploadID: upload.ID,
+	})
 }

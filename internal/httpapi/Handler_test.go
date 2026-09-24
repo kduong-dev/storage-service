@@ -27,7 +27,7 @@ func newClient(server *httptest.Server, apiKey string) storageservice.Client {
 	So(err, ShouldBeNil)
 	return storageservice.NewHTTPClient(storageservice.NewHTTPClientInput{
 		Timeout: 5 * time.Second,
-		BaseURL: *baseURL,
+		BaseURL: baseURL,
 		APIKey:  apiKey,
 	})
 }
@@ -71,7 +71,7 @@ func TestHandler(t *testing.T) {
 				So(uploadedFile.Size, ShouldEqual, len("<h1>report</h1>"))
 			})
 			Convey("Then alpha-service can download it", func() {
-				download, err := alphaClient.DownloadFile(ctx, uploadedFile.ID)
+				download, err := alphaClient.DownloadFile(ctx, storageservice.DownloadFileInput{FileID: uploadedFile.ID})
 				So(err, ShouldBeNil)
 				defer download.Body.Close()
 				body, err := io.ReadAll(download.Body)
@@ -80,55 +80,55 @@ func TestHandler(t *testing.T) {
 				So(download.ContentType, ShouldEqual, "text/html")
 			})
 			Convey("Then beta-service cannot see it", func() {
-				_, err := betaClient.DownloadFile(ctx, uploadedFile.ID)
+				_, err := betaClient.DownloadFile(ctx, storageservice.DownloadFileInput{FileID: uploadedFile.ID})
 				So(errors.Is(err, storageservice.ErrFileNotFound), ShouldBeTrue)
 			})
 			Convey("Then a namespace that is a prefix of alpha-service cannot see it", func() {
-				_, err := newClient(server, "prefix-key").DownloadFile(ctx, uploadedFile.ID)
+				_, err := newClient(server, "prefix-key").DownloadFile(ctx, storageservice.DownloadFileInput{FileID: uploadedFile.ID})
 				So(errors.Is(err, storageservice.ErrFileNotFound), ShouldBeTrue)
 			})
 		})
 		Convey("When alpha-service starts an upload", func() {
-			startedUpload, err := alphaClient.InitialiseUpload(ctx, "reports/job-2/report.html", "text/html")
+			startedUpload, err := alphaClient.InitialiseUpload(ctx, storageservice.InitialiseUploadInput{Key: "reports/job-2/report.html", ContentType: "text/html"})
 			So(err, ShouldBeNil)
 			Convey("Then beta-service cannot add parts to it", func() {
-				_, err := betaClient.UploadPart(ctx, startedUpload.ID, 1, strings.NewReader("intrusion"))
+				_, err := betaClient.UploadPart(ctx, storageservice.UploadPartInput{UploadID: startedUpload.ID, PartNumber: 1, Body: strings.NewReader("intrusion")})
 				So(errors.Is(err, storageservice.ErrUploadNotFound), ShouldBeTrue)
 				So(merry.HTTPCode(err), ShouldEqual, http.StatusNotFound)
 				So(merry.UserMessage(err), ShouldEqual, "upload not found")
 			})
 			Convey("Then beta-service cannot complete it", func() {
-				_, err := betaClient.CompleteUpload(ctx, startedUpload.ID)
+				_, err := betaClient.CompleteUpload(ctx, storageservice.CompleteUploadInput{UploadID: startedUpload.ID})
 				So(errors.Is(err, storageservice.ErrUploadNotFound), ShouldBeTrue)
 			})
 			Convey("Then a part over 5 MB is rejected as a bad request", func() {
-				_, err := alphaClient.UploadPart(ctx, startedUpload.ID, 1, strings.NewReader(strings.Repeat("a", 5*1024*1024+1)))
+				_, err := alphaClient.UploadPart(ctx, storageservice.UploadPartInput{UploadID: startedUpload.ID, PartNumber: 1, Body: strings.NewReader(strings.Repeat("a", 5*1024*1024+1))})
 				So(errors.Is(err, storageservice.ErrBadRequest), ShouldBeTrue)
 				So(merry.HTTPCode(err), ShouldEqual, http.StatusRequestEntityTooLarge)
 				So(merry.UserMessage(err), ShouldEqual, "part exceeds the 5 MB size limit")
 			})
 			Convey("Then beta-service cannot abort it", func() {
-				err := betaClient.AbortUpload(ctx, startedUpload.ID)
+				err := betaClient.AbortUpload(ctx, storageservice.AbortUploadInput{UploadID: startedUpload.ID})
 				So(errors.Is(err, storageservice.ErrUploadNotFound), ShouldBeTrue)
 			})
 			Convey("And alpha-service aborts it", func() {
-				So(alphaClient.AbortUpload(ctx, startedUpload.ID), ShouldBeNil)
+				So(alphaClient.AbortUpload(ctx, storageservice.AbortUploadInput{UploadID: startedUpload.ID}), ShouldBeNil)
 				Convey("Then no more parts can be added", func() {
-					_, err := alphaClient.UploadPart(ctx, startedUpload.ID, 1, strings.NewReader("late part"))
+					_, err := alphaClient.UploadPart(ctx, storageservice.UploadPartInput{UploadID: startedUpload.ID, PartNumber: 1, Body: strings.NewReader("late part")})
 					So(errors.Is(err, storageservice.ErrUploadNotFound), ShouldBeTrue)
 				})
 				Convey("Then it cannot be completed", func() {
-					_, err := alphaClient.CompleteUpload(ctx, startedUpload.ID)
+					_, err := alphaClient.CompleteUpload(ctx, storageservice.CompleteUploadInput{UploadID: startedUpload.ID})
 					So(errors.Is(err, storageservice.ErrUploadNotFound), ShouldBeTrue)
 				})
 				Convey("Then it cannot be aborted again", func() {
-					err := alphaClient.AbortUpload(ctx, startedUpload.ID)
+					err := alphaClient.AbortUpload(ctx, storageservice.AbortUploadInput{UploadID: startedUpload.ID})
 					So(errors.Is(err, storageservice.ErrUploadNotFound), ShouldBeTrue)
 				})
 			})
 		})
 		Convey("When a client uses a key that escapes its namespace", func() {
-			_, err := alphaClient.InitialiseUpload(ctx, "../beta-service/books/secret.pdf", "application/pdf")
+			_, err := alphaClient.InitialiseUpload(ctx, storageservice.InitialiseUploadInput{Key: "../beta-service/books/secret.pdf", ContentType: "application/pdf"})
 			Convey("Then the upload is rejected as a bad request", func() {
 				So(errors.Is(err, storageservice.ErrBadRequest), ShouldBeTrue)
 			})
@@ -174,7 +174,7 @@ func TestHandler(t *testing.T) {
 			})
 		})
 		Convey("When a client uses an unknown API key", func() {
-			_, err := newClient(server, "stolen-key").InitialiseUpload(ctx, "reports/report.html", "text/html")
+			_, err := newClient(server, "stolen-key").InitialiseUpload(ctx, storageservice.InitialiseUploadInput{Key: "reports/report.html", ContentType: "text/html"})
 			Convey("Then the request is unauthorized", func() {
 				So(errors.Is(err, storageservice.ErrUnauthorized), ShouldBeTrue)
 			})
