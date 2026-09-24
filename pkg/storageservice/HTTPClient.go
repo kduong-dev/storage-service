@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -84,6 +85,23 @@ func (client *HTTPClient) DownloadFile(ctx context.Context, fileID string) (outp
 		ContentDisposition: response.Header.Get("Content-Disposition"),
 		Body:               response.Body,
 	}
+	return
+}
+
+func (client *HTTPClient) ListFiles(ctx context.Context, input ListFilesInput) (output *ListFilesResponse, err error) {
+	query := url.Values{}
+	if input.Prefix != "" {
+		query.Set("prefix", input.Prefix)
+	}
+	if input.Cursor != "" {
+		query.Set("cursor", input.Cursor)
+	}
+	if input.Limit != 0 {
+		query.Set("limit", strconv.Itoa(input.Limit))
+	}
+	request := client.newRequest(ctx, http.MethodGet, "/storage/v1/files", nil)
+	request.URL.RawQuery = query.Encode()
+	err = client.doJSON(request, http.StatusOK, &output)
 	return
 }
 

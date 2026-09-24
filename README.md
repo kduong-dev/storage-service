@@ -13,6 +13,8 @@ All routes live under `/storage/v1` and require `Authorization: Bearer <api key>
 | `POST` | `/uploads` | Start an upload: `{"key": "reports/job-1/report.html", "content_type": "text/html"}` |
 | `PUT` | `/uploads/{upload_id}/parts/{part_number}` | Upload a part (≤ 5 MB, 1-based) |
 | `POST` | `/uploads/{upload_id}/complete` | Assemble parts into a file |
+| `POST` | `/uploads/{upload_id}/abort` | Discard an upload and its parts |
+| `GET` | `/files?prefix=&limit=&cursor=` | List files by key; `limit` defaults to 100 (max 1000), pass `next_cursor` back as `cursor` for the next page |
 | `GET` | `/files/{file_id}` | Download (supports range requests) |
 
 Keys are relative paths within the namespace; `..` segments are rejected. Resources in other namespaces return `404`.

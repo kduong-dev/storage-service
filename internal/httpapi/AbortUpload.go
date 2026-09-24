@@ -20,7 +20,8 @@ func (handler *Handler) AbortUpload(responseWriter http.ResponseWriter, request 
 		}
 	}()
 	ctx := request.Context()
-	uploadID := mux.Vars(request)["upload_id"]
+	vars := mux.Vars(request)
+	uploadID := vars["upload_id"]
 	if _, err = handler.getUpload(ctx, uploadID); err != nil {
 		return
 	}

@@ -72,6 +72,10 @@ func (client *fakeClient) AbortUpload(ctx context.Context, uploadID string) erro
 	return errors.New("not implemented")
 }
 
+func (client *fakeClient) ListFiles(ctx context.Context, input storageservice.ListFilesInput) (*storageservice.ListFilesResponse, error) {
+	return nil, errors.New("not implemented")
+}
+
 func (client *fakeClient) DownloadFile(ctx context.Context, fileID string) (*storageservice.DownloadFileResponse, error) {
 	return nil, errors.New("not implemented")
 }

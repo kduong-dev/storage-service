@@ -1,7 +1,10 @@
 package file
 
 import (
+	"cmp"
 	"context"
+	"slices"
+	"strings"
 
 	"github.com/kduong-dev/goutil/eventsource"
 	"github.com/kduong-dev/goutil/eventsource/subscription"
@@ -58,6 +61,40 @@ func (store *EventSourcedObjectStore) Get(ctx context.Context, fileID string) (*
 	}
 	copied := *object
 	return &copied, nil
+}
+
+func (store *EventSourcedObjectStore) List(ctx context.Context, input ListInput) (*ListOutput, error) {
+	fatal.Unless(input.Limit > 0, "list limit must be positive")
+	store.catchUp(ctx)
+	var after *Object
+	if input.After != "" {
+		object, ok := store.objectByFileID[input.After]
+		if !ok || !strings.HasPrefix(object.Key, input.KeyPrefix) {
+			return nil, ErrInvalidAfter
+		}
+		after = object
+	}
+	var matches []*Object
+	for _, object := range store.objectByFileID {
+		if strings.HasPrefix(object.Key, input.KeyPrefix) && (after == nil || compareObjects(object, after) > 0) {
+			matches = append(matches, object)
+		}
+	}
+	slices.SortFunc(matches, compareObjects)
+	output := &ListOutput{Objects: make([]*Object, 0, min(len(matches), input.Limit))}
+	for _, object := range matches[:min(len(matches), input.Limit)] {
+		copied := *object
+		output.Objects = append(output.Objects, &copied)
+	}
+	if len(matches) > input.Limit {
+		output.NextAfter = output.Objects[len(output.Objects)-1].ID
+	}
+	return output, nil
+}
+
+// compareObjects orders by key, then by ID since several uploads can share a key.
+func compareObjects(left *Object, right *Object) int {
+	return cmp.Or(strings.Compare(left.Key, right.Key), strings.Compare(left.ID, right.ID))
 }
 
 func (store *EventSourcedObjectStore) apply(ctx context.Context, event *eventsource.Event) error {

@@ -80,6 +80,24 @@ type Client interface {
 	// DownloadFile streams the assembled file for the given file ID.
 	// The caller is responsible for closing DownloadFileResponse.Body.
 	DownloadFile(ctx context.Context, fileID string) (*DownloadFileResponse, error)
+
+	// ListFiles returns one page of the caller's files, ordered by key. Pass
+	// the returned NextCursor back as Cursor to fetch the next page.
+	ListFiles(ctx context.Context, input ListFilesInput) (*ListFilesResponse, error)
+}
+
+type ListFilesInput struct {
+	// Prefix filters to keys starting with it, relative to the caller's namespace.
+	Prefix string
+	Cursor string
+	// Limit is the page size; zero uses the server default of 100, at most 1000.
+	Limit int
+}
+
+type ListFilesResponse struct {
+	Files []*File `json:"files"`
+	// NextCursor is empty on the last page.
+	NextCursor string `json:"next_cursor,omitempty"`
 }
 
 func ClientFromEnv() Client {

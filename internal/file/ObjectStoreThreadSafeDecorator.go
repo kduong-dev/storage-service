@@ -31,3 +31,9 @@ func (decorator *ObjectStoreThreadSafeDecorator) Get(ctx context.Context, fileID
 	defer decorator.mutex.Unlock()
 	return decorator.decorated.Get(ctx, fileID)
 }
+
+func (decorator *ObjectStoreThreadSafeDecorator) List(ctx context.Context, input ListInput) (*ListOutput, error) {
+	decorator.mutex.Lock()
+	defer decorator.mutex.Unlock()
+	return decorator.decorated.List(ctx, input)
+}

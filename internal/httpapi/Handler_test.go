@@ -30,7 +30,7 @@ func newClient(server *httptest.Server, apiKey string) storageservice.Client {
 	})
 }
 
-func TestRouter(t *testing.T) {
+func TestHandler(t *testing.T) {
 	Convey("Given a storage service with alpha-service and beta-service clients", t, func() {
 		router := httpapi.NewRouter(httpapi.NewRouterInput{
 			APIKeyMiddleware: apikey.NewMiddleware(apikey.NewMiddlewareInput{
@@ -124,6 +124,46 @@ func TestRouter(t *testing.T) {
 		Convey("When a client uses a key that escapes its namespace", func() {
 			_, err := alphaClient.InitialiseUpload(ctx, "../beta-service/books/secret.pdf", "application/pdf")
 			Convey("Then the upload is rejected as a bad request", func() {
+				So(errors.Is(err, storageservice.ErrBadRequest), ShouldBeTrue)
+			})
+		})
+		Convey("When alpha-service and beta-service have uploaded files", func() {
+			for _, key := range []string{"reports/b.html", "reports/a.html", "images/logo.png"} {
+				_, err := storageservice.UploadFile(ctx, alphaClient, storageservice.UploadFileInput{Key: key, ContentType: "text/plain", Body: strings.NewReader(key)})
+				So(err, ShouldBeNil)
+			}
+			_, err := storageservice.UploadFile(ctx, betaClient, storageservice.UploadFileInput{Key: "reports/a.html", ContentType: "text/plain", Body: strings.NewReader("beta")})
+			So(err, ShouldBeNil)
+			listKeys := func(response *storageservice.ListFilesResponse) []string {
+				keys := make([]string, len(response.Files))
+				for index, listedFile := range response.Files {
+					keys[index] = listedFile.Key
+				}
+				return keys
+			}
+			Convey("Then alpha-service pages through only its own files in key order", func() {
+				firstPage, err := alphaClient.ListFiles(ctx, storageservice.ListFilesInput{Limit: 2})
+				So(err, ShouldBeNil)
+				So(listKeys(firstPage), ShouldResemble, []string{"alpha-service/images/logo.png", "alpha-service/reports/a.html"})
+				So(firstPage.NextCursor, ShouldNotBeEmpty)
+				secondPage, err := alphaClient.ListFiles(ctx, storageservice.ListFilesInput{Cursor: firstPage.NextCursor, Limit: 2})
+				So(err, ShouldBeNil)
+				So(listKeys(secondPage), ShouldResemble, []string{"alpha-service/reports/b.html"})
+				So(secondPage.NextCursor, ShouldBeEmpty)
+			})
+			Convey("Then alpha-service can filter by prefix", func() {
+				response, err := alphaClient.ListFiles(ctx, storageservice.ListFilesInput{Prefix: "reports/"})
+				So(err, ShouldBeNil)
+				So(listKeys(response), ShouldResemble, []string{"alpha-service/reports/a.html", "alpha-service/reports/b.html"})
+			})
+			Convey("Then beta-service cannot continue from alpha-service's cursor", func() {
+				firstPage, err := alphaClient.ListFiles(ctx, storageservice.ListFilesInput{Limit: 1})
+				So(err, ShouldBeNil)
+				_, err = betaClient.ListFiles(ctx, storageservice.ListFilesInput{Cursor: firstPage.NextCursor})
+				So(errors.Is(err, storageservice.ErrBadRequest), ShouldBeTrue)
+			})
+			Convey("Then a limit above 1000 is rejected as a bad request", func() {
+				_, err := alphaClient.ListFiles(ctx, storageservice.ListFilesInput{Limit: 1001})
 				So(errors.Is(err, storageservice.ErrBadRequest), ShouldBeTrue)
 			})
 		})
