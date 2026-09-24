@@ -4,7 +4,9 @@ import (
 	"context"
 	"crypto/md5"
 	"encoding/hex"
+	"errors"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -57,12 +59,17 @@ func (storage *FileSystemStorage) UploadPart(ctx context.Context, input UploadPa
 	partsDirectory := storage.getPartsDirectory(input.UploadID)
 	partPath := filepath.Join(partsDirectory, strconv.Itoa(input.PartNumber))
 	file, err := os.Create(partPath)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, ErrUploadNotFound
+	}
 	fatal.OnError(err)
 	defer file.Close()
 	hash := md5.New()
 	writer := io.MultiWriter(file, hash)
 	size, err := io.Copy(writer, input.Reader)
-	fatal.OnError(err)
+	if err != nil {
+		return nil, err
+	}
 	output = &UploadPartOutput{
 		Size:     size,
 		Checksum: hex.EncodeToString(hash.Sum(nil)),
@@ -71,6 +78,11 @@ func (storage *FileSystemStorage) UploadPart(ctx context.Context, input UploadPa
 }
 
 func (storage *FileSystemStorage) CompleteUpload(ctx context.Context, input CompleteUploadInput) (output *CompleteUploadOutput, err error) {
+	partsDirectory := storage.getPartsDirectory(input.UploadID)
+	if _, err = os.Stat(partsDirectory); errors.Is(err, fs.ErrNotExist) {
+		return nil, ErrUploadNotFound
+	}
+	fatal.OnError(err)
 	sortedPartNumbers := storage.getSortedPartNumbers(input.PartNumbers)
 	path := filepath.Join(storage.root, "objects", input.Key)
 	err = os.MkdirAll(filepath.Dir(path), 0o755)
@@ -78,12 +90,14 @@ func (storage *FileSystemStorage) CompleteUpload(ctx context.Context, input Comp
 	file, err := os.Create(path)
 	fatal.OnError(err)
 	defer file.Close()
-	partsDirectory := storage.getPartsDirectory(input.UploadID)
 	hash := md5.New()
 	var total int64
 	for _, partNumber := range sortedPartNumbers {
 		partPath := filepath.Join(partsDirectory, strconv.Itoa(partNumber))
 		part, err := os.Open(partPath)
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil, ErrUploadNotFound
+		}
 		fatal.OnError(err)
 		writer := io.MultiWriter(file, hash)
 		n, err := io.Copy(writer, part)

@@ -97,6 +97,10 @@ func TestRouter(t *testing.T) {
 				_, err := betaClient.CompleteUpload(ctx, startedUpload.ID)
 				So(errors.Is(err, storageservice.ErrUploadNotFound), ShouldBeTrue)
 			})
+			Convey("Then a part over 5 MB is rejected as a bad request", func() {
+				_, err := alphaClient.UploadPart(ctx, startedUpload.ID, 1, strings.NewReader(strings.Repeat("a", 5*1024*1024+1)))
+				So(errors.Is(err, storageservice.ErrBadRequest), ShouldBeTrue)
+			})
 			Convey("Then beta-service cannot abort it", func() {
 				err := betaClient.AbortUpload(ctx, startedUpload.ID)
 				So(errors.Is(err, storageservice.ErrUploadNotFound), ShouldBeTrue)
@@ -105,15 +109,15 @@ func TestRouter(t *testing.T) {
 				So(alphaClient.AbortUpload(ctx, startedUpload.ID), ShouldBeNil)
 				Convey("Then no more parts can be added", func() {
 					_, err := alphaClient.UploadPart(ctx, startedUpload.ID, 1, strings.NewReader("late part"))
-					So(errors.Is(err, storageservice.ErrUploadNotActive), ShouldBeTrue)
+					So(errors.Is(err, storageservice.ErrUploadNotFound), ShouldBeTrue)
 				})
 				Convey("Then it cannot be completed", func() {
 					_, err := alphaClient.CompleteUpload(ctx, startedUpload.ID)
-					So(errors.Is(err, storageservice.ErrUploadNotActive), ShouldBeTrue)
+					So(errors.Is(err, storageservice.ErrUploadNotFound), ShouldBeTrue)
 				})
 				Convey("Then it cannot be aborted again", func() {
 					err := alphaClient.AbortUpload(ctx, startedUpload.ID)
-					So(errors.Is(err, storageservice.ErrUploadNotActive), ShouldBeTrue)
+					So(errors.Is(err, storageservice.ErrUploadNotFound), ShouldBeTrue)
 				})
 			})
 		})

@@ -61,24 +61,23 @@ func TestEventSourcedObjectStore(t *testing.T) {
 				UploadID:  "upload-1",
 				UpdatedAt: "2026-01-01T00:00:03Z",
 			}), ShouldBeNil)
-			Convey("Then it is aborted and accepts no more changes", func() {
-				fetched, err := store.Get(ctx, "upload-1")
-				So(err, ShouldBeNil)
-				So(fetched.Status, ShouldEqual, upload.StatusAborted)
-				So(recordPart(upload.Part{Number: 1}, "2026-01-01T00:00:04Z"), ShouldEqual, upload.ErrNotActive)
-				So(store.Complete(ctx, upload.CompleteInput{UploadID: "upload-1"}), ShouldEqual, upload.ErrNotActive)
+			Convey("Then it is removed from the store", func() {
+				_, err := store.Get(ctx, "upload-1")
+				So(err, ShouldEqual, upload.ErrNotFound)
+				So(recordPart(upload.Part{Number: 1}, "2026-01-01T00:00:04Z"), ShouldEqual, upload.ErrNotFound)
+				So(store.Complete(ctx, upload.CompleteInput{UploadID: "upload-1"}), ShouldEqual, upload.ErrNotFound)
 			})
 		})
 		Convey("When a fetched upload is modified by the caller", func() {
 			So(recordPart(upload.Part{Number: 1, Size: 5}, "2026-01-01T00:00:01Z"), ShouldBeNil)
 			fetched, err := store.Get(ctx, "upload-1")
 			So(err, ShouldBeNil)
-			fetched.Status = upload.StatusAborted
+			fetched.Key = "beta-service/reports/report.html"
 			fetched.Parts[0].Size = 999
 			Convey("Then the stored upload is unaffected", func() {
 				stored, err := store.Get(ctx, "upload-1")
 				So(err, ShouldBeNil)
-				So(stored.Status, ShouldEqual, upload.StatusInitiated)
+				So(stored.Key, ShouldEqual, "alpha-service/reports/report.html")
 				So(stored.Parts[0].Size, ShouldEqual, 5)
 			})
 		})

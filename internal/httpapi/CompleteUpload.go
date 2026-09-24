@@ -26,7 +26,7 @@ func (handler *Handler) CompleteUpload(responseWriter http.ResponseWriter, reque
 	ctx := request.Context()
 	vars := mux.Vars(request)
 	uploadID := vars["upload_id"]
-	uploadObject, err := handler.getActiveUpload(ctx, uploadID)
+	uploadObject, err := handler.getUpload(ctx, uploadID)
 	if err != nil {
 		return
 	}
@@ -46,6 +46,10 @@ func (handler *Handler) CompleteUpload(responseWriter http.ResponseWriter, reque
 		Key:         uploadObject.Key,
 		PartNumbers: partNumbers,
 	})
+	if errors.Is(err, storage.ErrUploadNotFound) {
+		err = merry.Wrap(err).WithHTTPCode(http.StatusNotFound).WithUserMessage("upload not found")
+		return
+	}
 	if err != nil {
 		return
 	}
@@ -59,10 +63,6 @@ func (handler *Handler) CompleteUpload(responseWriter http.ResponseWriter, reque
 	})
 	if errors.Is(err, upload.ErrNotFound) {
 		err = merry.Wrap(err).WithHTTPCode(http.StatusNotFound).WithUserMessage("upload not found")
-		return
-	}
-	if errors.Is(err, upload.ErrNotActive) {
-		err = merry.Wrap(err).WithHTTPCode(http.StatusConflict).WithUserMessage("upload is not active")
 		return
 	}
 	fatal.OnError(err)

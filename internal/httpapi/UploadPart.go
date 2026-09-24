@@ -37,7 +37,7 @@ func (handler *Handler) UploadPart(responseWriter http.ResponseWriter, request *
 		err = merry.New("part_number must be a positive integer").WithHTTPCode(http.StatusBadRequest)
 		return
 	}
-	if _, err = handler.getActiveUpload(ctx, uploadID); err != nil {
+	if _, err = handler.getUpload(ctx, uploadID); err != nil {
 		return
 	}
 	limitedBody := http.MaxBytesReader(responseWriter, request.Body, maxPartSizeBytes)
@@ -46,6 +46,10 @@ func (handler *Handler) UploadPart(responseWriter http.ResponseWriter, request *
 		PartNumber: partNumber,
 		Reader:     limitedBody,
 	})
+	if errors.Is(err, storage.ErrUploadNotFound) {
+		err = merry.Wrap(err).WithHTTPCode(http.StatusNotFound).WithUserMessage("upload not found")
+		return
+	}
 	if err != nil {
 		var maxBytesError *http.MaxBytesError
 		if errors.As(err, &maxBytesError) {
@@ -62,10 +66,6 @@ func (handler *Handler) UploadPart(responseWriter http.ResponseWriter, request *
 	})
 	if errors.Is(err, upload.ErrNotFound) {
 		err = merry.Wrap(err).WithHTTPCode(http.StatusNotFound).WithUserMessage("upload not found")
-		return
-	}
-	if errors.Is(err, upload.ErrNotActive) {
-		err = merry.Wrap(err).WithHTTPCode(http.StatusConflict).WithUserMessage("upload is not active")
 		return
 	}
 	fatal.OnError(err)

@@ -54,39 +54,14 @@ func (handler *Handler) getUpload(ctx context.Context, uploadID string) (*upload
 		return nil, merry.Wrap(err).WithHTTPCode(http.StatusNotFound).WithUserMessage("upload not found")
 	}
 	fatal.OnError(err)
-	if !isInNamespace(ctx, object.Key) {
+	if !handler.isInNamespace(ctx, object.Key) {
 		return nil, merry.Wrap(upload.ErrNotFound).WithHTTPCode(http.StatusNotFound).WithUserMessage("upload not found")
-	}
-	return object, nil
-}
-
-// getActiveUpload is getUpload for uploads still accepting changes, checked
-// before touching storage since inactive uploads no longer have parts on disk.
-func (handler *Handler) getActiveUpload(ctx context.Context, uploadID string) (*upload.Object, error) {
-	object, err := handler.getUpload(ctx, uploadID)
-	if err != nil {
-		return nil, err
-	}
-	if object.Status != upload.StatusInitiated {
-		return nil, merry.Wrap(upload.ErrNotActive).WithHTTPCode(http.StatusConflict).WithUserMessage("upload is not active")
-	}
-	return object, nil
-}
-
-func (handler *Handler) getFile(ctx context.Context, fileID string) (*file.Object, error) {
-	object, err := handler.fileObjectStore.Get(ctx, fileID)
-	if errors.Is(err, file.ErrNotFound) {
-		return nil, merry.Wrap(err).WithHTTPCode(http.StatusNotFound).WithUserMessage("file not found")
-	}
-	fatal.OnError(err)
-	if !isInNamespace(ctx, object.Key) {
-		return nil, merry.Wrap(file.ErrNotFound).WithHTTPCode(http.StatusNotFound).WithUserMessage("file not found")
 	}
 	return object, nil
 }
 
 // isInNamespace reports whether the key sits under the caller's namespace.
 // The trailing slash stops namespace "alpha" from matching "alpha-service/".
-func isInNamespace(ctx context.Context, key string) bool {
+func (handler *Handler) isInNamespace(ctx context.Context, key string) bool {
 	return strings.HasPrefix(key, apikey.GetNamespace(ctx)+"/")
 }

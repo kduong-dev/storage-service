@@ -11,32 +11,21 @@ import (
 )
 
 var (
-	ErrUnauthorized    = errors.New("unauthorized")
-	ErrUploadNotFound  = errors.New("upload not found")
-	ErrFileNotFound    = errors.New("file not found")
-	ErrUploadNotActive = errors.New("upload is not active")
-	ErrBadRequest      = errors.New("bad request")
-	ErrServerError     = errors.New("server error")
-)
-
-// UploadStatus represents the state of a multipart upload.
-type UploadStatus string
-
-const (
-	UploadStatusInitiated UploadStatus = "initiated"
-	UploadStatusCompleted UploadStatus = "completed"
-	UploadStatusAborted   UploadStatus = "aborted"
+	ErrUnauthorized   = errors.New("unauthorized")
+	ErrUploadNotFound = errors.New("upload not found")
+	ErrFileNotFound   = errors.New("file not found")
+	ErrBadRequest     = errors.New("bad request")
+	ErrServerError    = errors.New("server error")
 )
 
 // Upload tracks a multipart upload session.
 type Upload struct {
-	ID          string       `json:"id"`
-	Key         string       `json:"key"`
-	ContentType string       `json:"content_type"`
-	Status      UploadStatus `json:"status"`
-	Parts       []Part       `json:"parts,omitempty"`
-	CreatedAt   string       `json:"created_at"`
-	UpdatedAt   string       `json:"updated_at"`
+	ID          string `json:"id"`
+	Key         string `json:"key"`
+	ContentType string `json:"content_type"`
+	Parts       []Part `json:"parts,omitempty"`
+	CreatedAt   string `json:"created_at"`
+	UpdatedAt   string `json:"updated_at"`
 }
 
 // Part describes one uploaded chunk.

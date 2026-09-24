@@ -32,10 +32,6 @@ func (handler *Handler) AbortUpload(responseWriter http.ResponseWriter, request 
 		err = merry.Wrap(err).WithHTTPCode(http.StatusNotFound).WithUserMessage("upload not found")
 		return
 	}
-	if errors.Is(err, upload.ErrNotActive) {
-		err = merry.Wrap(err).WithHTTPCode(http.StatusConflict).WithUserMessage("upload is not active")
-		return
-	}
 	fatal.OnError(err)
 	if err = handler.storage.AbortUpload(ctx, uploadID); err != nil {
 		return

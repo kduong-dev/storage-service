@@ -2,11 +2,13 @@ package storage_test
 
 import (
 	"context"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"testing/iotest"
 
 	"github.com/kduong-dev/storage-service/internal/storage"
 	. "github.com/smartystreets/goconvey/convey"
@@ -50,6 +52,36 @@ func TestFileSystemStorage(t *testing.T) {
 					content, err := io.ReadAll(readSeekCloser)
 					So(err, ShouldBeNil)
 					So(string(content), ShouldEqual, "hello world")
+				})
+			})
+			Convey("And the upload is aborted", func() {
+				So(fileSystemStorage.AbortUpload(ctx, "upload-1"), ShouldBeNil)
+				Convey("Then uploading a part reports the upload as not found", func() {
+					_, err := fileSystemStorage.UploadPart(ctx, storage.UploadPartInput{
+						UploadID:   "upload-1",
+						PartNumber: 1,
+						Reader:     strings.NewReader("late"),
+					})
+					So(err, ShouldEqual, storage.ErrUploadNotFound)
+				})
+				Convey("Then completing it reports the upload as not found", func() {
+					_, err := fileSystemStorage.CompleteUpload(ctx, storage.CompleteUploadInput{
+						UploadID:    "upload-1",
+						FileID:      "file-1",
+						Key:         "alpha-service/reports/report.txt",
+						PartNumbers: []int{1},
+					})
+					So(err, ShouldEqual, storage.ErrUploadNotFound)
+				})
+			})
+			Convey("And a part body fails while being read", func() {
+				_, err := fileSystemStorage.UploadPart(ctx, storage.UploadPartInput{
+					UploadID:   "upload-1",
+					PartNumber: 1,
+					Reader:     io.MultiReader(strings.NewReader("partial"), iotest.ErrReader(errors.New("connection reset"))),
+				})
+				Convey("Then the read error is returned instead of stopping the server", func() {
+					So(err, ShouldNotBeNil)
 				})
 			})
 		})

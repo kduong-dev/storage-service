@@ -134,8 +134,6 @@ func mapResponseError(response *http.Response) error {
 			return fmt.Errorf("%w: %s", ErrUploadNotFound, message)
 		}
 		return fmt.Errorf("%w: %s", ErrFileNotFound, message)
-	case http.StatusConflict:
-		return fmt.Errorf("%w: %s", ErrUploadNotActive, message)
 	default:
 		return fmt.Errorf("%w: %s", ErrServerError, message)
 	}

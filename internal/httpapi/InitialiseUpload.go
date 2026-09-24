@@ -56,7 +56,6 @@ func (handler *Handler) InitialiseUpload(responseWriter http.ResponseWriter, req
 		ID:          uploadID,
 		Key:         apikey.GetNamespace(ctx) + "/" + input.Key,
 		ContentType: input.ContentType,
-		Status:      upload.StatusInitiated,
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}

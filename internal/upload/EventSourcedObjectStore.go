@@ -38,14 +38,10 @@ func (store *EventSourcedObjectStore) catchUp(ctx context.Context) {
 	fatal.OnError(err)
 }
 
-func (store *EventSourcedObjectStore) assertActive(ctx context.Context, uploadID string) error {
+func (store *EventSourcedObjectStore) assertExists(ctx context.Context, uploadID string) error {
 	store.catchUp(ctx)
-	object, ok := store.objectByUploadID[uploadID]
-	if !ok {
+	if _, ok := store.objectByUploadID[uploadID]; !ok {
 		return ErrNotFound
-	}
-	if object.Status != StatusInitiated {
-		return ErrNotActive
 	}
 	return nil
 }
@@ -68,7 +64,7 @@ func (store *EventSourcedObjectStore) Initialise(ctx context.Context, object *Ob
 }
 
 func (store *EventSourcedObjectStore) RecordPart(ctx context.Context, input RecordPartInput) error {
-	if err := store.assertActive(ctx, input.UploadID); err != nil {
+	if err := store.assertExists(ctx, input.UploadID); err != nil {
 		return err
 	}
 	return store.append(EventFrame{
@@ -84,7 +80,7 @@ func (store *EventSourcedObjectStore) RecordPart(ctx context.Context, input Reco
 }
 
 func (store *EventSourcedObjectStore) Complete(ctx context.Context, input CompleteInput) error {
-	if err := store.assertActive(ctx, input.UploadID); err != nil {
+	if err := store.assertExists(ctx, input.UploadID); err != nil {
 		return err
 	}
 	return store.append(EventFrame{
@@ -100,7 +96,7 @@ func (store *EventSourcedObjectStore) Complete(ctx context.Context, input Comple
 }
 
 func (store *EventSourcedObjectStore) Abort(ctx context.Context, input AbortInput) error {
-	if err := store.assertActive(ctx, input.UploadID); err != nil {
+	if err := store.assertExists(ctx, input.UploadID); err != nil {
 		return err
 	}
 	return store.append(EventFrame{
@@ -134,7 +130,7 @@ func (store *EventSourcedObjectStore) apply(ctx context.Context, event *eventsou
 	case EventTypeUploadCompleted:
 		delete(store.objectByUploadID, frame.UploadCompletedEvent.UploadID)
 	case EventTypeUploadAborted:
-		store.applyAborted(frame.UploadAbortedEvent)
+		delete(store.objectByUploadID, frame.UploadAbortedEvent.UploadID)
 	}
 	return nil
 }
@@ -144,7 +140,6 @@ func (store *EventSourcedObjectStore) applyInitiated(event *UploadInitiatedEvent
 		ID:          event.UploadID,
 		Key:         event.Key,
 		ContentType: event.ContentType,
-		Status:      StatusInitiated,
 		CreatedAt:   event.CreatedAt,
 		UpdatedAt:   event.CreatedAt,
 	}
@@ -164,13 +159,4 @@ func (store *EventSourcedObjectStore) applyPartUploaded(event *PartUploadedEvent
 		}
 	}
 	object.Parts = append(object.Parts, part)
-}
-
-func (store *EventSourcedObjectStore) applyAborted(event *UploadAbortedEvent) {
-	object, ok := store.objectByUploadID[event.UploadID]
-	if !ok {
-		return
-	}
-	object.Status = StatusAborted
-	object.UpdatedAt = event.UpdatedAt
 }
