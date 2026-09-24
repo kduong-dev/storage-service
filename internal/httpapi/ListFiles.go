@@ -46,7 +46,7 @@ func (handler *Handler) ListFiles(responseWriter http.ResponseWriter, request *h
 	}
 	fatal.OnError(err)
 	httpx.SendJSONResponse(responseWriter, http.StatusOK, storageservice.ListFilesResponse{
-		Files:      toFiles(output.Objects),
+		Files:      output.Objects,
 		NextCursor: output.NextAfter,
 	})
 }

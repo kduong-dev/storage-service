@@ -11,7 +11,6 @@ import (
 	"github.com/kduong-dev/goutil/fatal"
 	"github.com/kduong-dev/goutil/httpx"
 	"github.com/kduong-dev/storage-service/internal/apikey"
-	"github.com/kduong-dev/storage-service/internal/upload"
 	"github.com/kduong-dev/storage-service/pkg/storageservice"
 )
 
@@ -48,7 +47,7 @@ func (handler *Handler) InitialiseUpload(responseWriter http.ResponseWriter, req
 		return
 	}
 	now := time.Now().UTC().Format(time.RFC3339)
-	object := &upload.Object{
+	object := &storageservice.Upload{
 		ID:          uploadID,
 		Key:         apikey.GetNamespace(ctx) + "/" + input.Key,
 		ContentType: input.ContentType,

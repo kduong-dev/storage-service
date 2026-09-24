@@ -1,10 +1,14 @@
 package file
 
-import "context"
+import (
+	"context"
+
+	"github.com/kduong-dev/storage-service/pkg/storageservice"
+)
 
 type ObjectStore interface {
-	Put(ctx context.Context, object *Object) error
-	Get(ctx context.Context, fileID string) (*Object, error)
+	Put(ctx context.Context, object *storageservice.File) error
+	Get(ctx context.Context, fileID string) (*storageservice.File, error)
 	List(ctx context.Context, input ListInput) (*ListOutput, error)
 }
 
@@ -17,7 +21,7 @@ type ListInput struct {
 }
 
 type ListOutput struct {
-	Objects []*Object
+	Objects []*storageservice.File
 	// NextAfter is the After for the next page, empty when there are no more.
 	NextAfter string
 }

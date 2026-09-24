@@ -8,6 +8,7 @@ import (
 
 	"github.com/kduong-dev/goutil/eventsource"
 	"github.com/kduong-dev/storage-service/internal/file"
+	"github.com/kduong-dev/storage-service/pkg/storageservice"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -25,7 +26,7 @@ func TestObjectStoreThreadSafeDecorator(t *testing.T) {
 			for index := range errs {
 				waitGroup.Go(func() {
 					fileID := "file-" + strconv.Itoa(index)
-					if errs[index] = store.Put(ctx, &file.Object{ID: fileID}); errs[index] == nil {
+					if errs[index] = store.Put(ctx, &storageservice.File{ID: fileID}); errs[index] == nil {
 						_, errs[index] = store.Get(ctx, fileID)
 					}
 				})

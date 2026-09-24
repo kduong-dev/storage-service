@@ -7,6 +7,7 @@ import (
 
 	"github.com/kduong-dev/goutil/eventsource"
 	"github.com/kduong-dev/storage-service/internal/upload"
+	"github.com/kduong-dev/storage-service/pkg/storageservice"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -18,7 +19,7 @@ func TestObjectStoreThreadSafeDecorator(t *testing.T) {
 				Log: eventsource.NewInMemoryLog("storage:uploads"),
 			}),
 		})
-		So(store.Initialise(ctx, &upload.Object{ID: "upload-1"}), ShouldBeNil)
+		So(store.Initialise(ctx, &storageservice.Upload{ID: "upload-1"}), ShouldBeNil)
 		Convey("When parts are recorded concurrently", func() {
 			var waitGroup sync.WaitGroup
 			errs := make([]error, 50)
@@ -26,7 +27,7 @@ func TestObjectStoreThreadSafeDecorator(t *testing.T) {
 				waitGroup.Go(func() {
 					errs[index] = store.RecordPart(ctx, upload.RecordPartInput{
 						UploadID:  "upload-1",
-						Part:      upload.Part{Number: index + 1},
+						Part:      storageservice.Part{PartNumber: index + 1},
 						UpdatedAt: "2026-01-01T00:00:01Z",
 					})
 				})

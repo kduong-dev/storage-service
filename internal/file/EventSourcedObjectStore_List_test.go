@@ -6,6 +6,7 @@ import (
 
 	"github.com/kduong-dev/goutil/eventsource"
 	"github.com/kduong-dev/storage-service/internal/file"
+	"github.com/kduong-dev/storage-service/pkg/storageservice"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -15,7 +16,7 @@ func TestEventSourcedObjectStoreList(t *testing.T) {
 		store := file.NewEventSourcedObjectStore(file.NewEventSourcedObjectStoreInput{
 			Log: eventsource.NewInMemoryLog("storage:files"),
 		})
-		for _, object := range []*file.Object{
+		for _, object := range []*storageservice.File{
 			{ID: "file-c", Key: "alpha-service/reports/b.html"},
 			{ID: "file-a", Key: "alpha-service/reports/a.html"},
 			{ID: "file-d", Key: "alpha-service/images/logo.png"},
@@ -58,7 +59,7 @@ func TestEventSourcedObjectStoreList(t *testing.T) {
 		})
 		Convey("When a new file sorting before the cursor is added between pages", func() {
 			_, firstNext := listIDs(file.ListInput{KeyPrefix: "alpha-service/", Limit: 2})
-			So(store.Put(ctx, &file.Object{ID: "file-f", Key: "alpha-service/aaa.html"}), ShouldBeNil)
+			So(store.Put(ctx, &storageservice.File{ID: "file-f", Key: "alpha-service/aaa.html"}), ShouldBeNil)
 			secondIDs, _ := listIDs(file.ListInput{KeyPrefix: "alpha-service/", After: firstNext, Limit: 10})
 			Convey("Then the next page continues after the cursor without repeating files", func() {
 				So(secondIDs, ShouldResemble, []string{"file-b", "file-c"})

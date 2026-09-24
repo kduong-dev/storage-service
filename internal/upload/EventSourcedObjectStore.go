@@ -7,6 +7,7 @@ import (
 	"github.com/kduong-dev/goutil/eventsource"
 	"github.com/kduong-dev/goutil/eventsource/subscription"
 	"github.com/kduong-dev/goutil/fatal"
+	"github.com/kduong-dev/storage-service/pkg/storageservice"
 )
 
 var _ ObjectStore = (*EventSourcedObjectStore)(nil)
@@ -14,7 +15,7 @@ var _ ObjectStore = (*EventSourcedObjectStore)(nil)
 type EventSourcedObjectStore struct {
 	log              eventsource.Log
 	cursor           int64
-	objectByUploadID map[string]*Object
+	objectByUploadID map[string]*storageservice.Upload
 }
 
 type NewEventSourcedObjectStoreInput struct {
@@ -24,7 +25,7 @@ type NewEventSourcedObjectStoreInput struct {
 func NewEventSourcedObjectStore(input NewEventSourcedObjectStoreInput) *EventSourcedObjectStore {
 	return &EventSourcedObjectStore{
 		log:              input.Log,
-		objectByUploadID: make(map[string]*Object),
+		objectByUploadID: make(map[string]*storageservice.Upload),
 	}
 }
 
@@ -51,7 +52,7 @@ func (store *EventSourcedObjectStore) append(frame EventFrame) error {
 	return err
 }
 
-func (store *EventSourcedObjectStore) Initialise(ctx context.Context, object *Object) error {
+func (store *EventSourcedObjectStore) Initialise(ctx context.Context, object *storageservice.Upload) error {
 	return store.append(EventFrame{
 		EventBase: eventsource.NewEventBase(EventTypeUploadInitiated),
 		UploadInitiatedEvent: &UploadInitiatedEvent{
@@ -71,7 +72,7 @@ func (store *EventSourcedObjectStore) RecordPart(ctx context.Context, input Reco
 		EventBase: eventsource.NewEventBase(EventTypePartUploaded),
 		PartUploadedEvent: &PartUploadedEvent{
 			UploadID:   input.UploadID,
-			PartNumber: input.Part.Number,
+			PartNumber: input.Part.PartNumber,
 			Size:       input.Part.Size,
 			Checksum:   input.Part.Checksum,
 			UpdatedAt:  input.UpdatedAt,
@@ -108,7 +109,7 @@ func (store *EventSourcedObjectStore) Abort(ctx context.Context, input AbortInpu
 	})
 }
 
-func (store *EventSourcedObjectStore) Get(ctx context.Context, uploadID string) (*Object, error) {
+func (store *EventSourcedObjectStore) Get(ctx context.Context, uploadID string) (*storageservice.Upload, error) {
 	store.catchUp(ctx)
 	object, ok := store.objectByUploadID[uploadID]
 	if !ok {
@@ -136,7 +137,7 @@ func (store *EventSourcedObjectStore) apply(ctx context.Context, event *eventsou
 }
 
 func (store *EventSourcedObjectStore) applyInitiated(event *UploadInitiatedEvent) {
-	store.objectByUploadID[event.UploadID] = &Object{
+	store.objectByUploadID[event.UploadID] = &storageservice.Upload{
 		ID:          event.UploadID,
 		Key:         event.Key,
 		ContentType: event.ContentType,
@@ -150,10 +151,10 @@ func (store *EventSourcedObjectStore) applyPartUploaded(event *PartUploadedEvent
 	if !ok {
 		return
 	}
-	part := Part{Number: event.PartNumber, Size: event.Size, Checksum: event.Checksum}
+	part := storageservice.Part{PartNumber: event.PartNumber, Size: event.Size, Checksum: event.Checksum}
 	object.UpdatedAt = event.UpdatedAt
 	for index, existing := range object.Parts {
-		if existing.Number == event.PartNumber {
+		if existing.PartNumber == event.PartNumber {
 			object.Parts[index] = part
 			return
 		}

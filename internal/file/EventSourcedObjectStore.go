@@ -7,6 +7,7 @@ import (
 	"github.com/kduong-dev/goutil/eventsource"
 	"github.com/kduong-dev/goutil/eventsource/subscription"
 	"github.com/kduong-dev/goutil/fatal"
+	"github.com/kduong-dev/storage-service/pkg/storageservice"
 )
 
 var _ ObjectStore = (*EventSourcedObjectStore)(nil)
@@ -14,7 +15,7 @@ var _ ObjectStore = (*EventSourcedObjectStore)(nil)
 type EventSourcedObjectStore struct {
 	log            eventsource.Log
 	cursor         int64
-	objectByFileID map[string]*Object
+	objectByFileID map[string]*storageservice.File
 	objects        SortedObjects
 }
 
@@ -25,7 +26,7 @@ type NewEventSourcedObjectStoreInput struct {
 func NewEventSourcedObjectStore(input NewEventSourcedObjectStoreInput) *EventSourcedObjectStore {
 	return &EventSourcedObjectStore{
 		log:            input.Log,
-		objectByFileID: make(map[string]*Object),
+		objectByFileID: make(map[string]*storageservice.File),
 	}
 }
 
@@ -39,7 +40,7 @@ func (store *EventSourcedObjectStore) catchUp(ctx context.Context) {
 	fatal.OnError(err)
 }
 
-func (store *EventSourcedObjectStore) Put(ctx context.Context, object *Object) error {
+func (store *EventSourcedObjectStore) Put(ctx context.Context, object *storageservice.File) error {
 	store.catchUp(ctx)
 	if _, ok := store.objectByFileID[object.ID]; ok {
 		return ErrAlreadyExists
@@ -52,7 +53,7 @@ func (store *EventSourcedObjectStore) Put(ctx context.Context, object *Object) e
 	return err
 }
 
-func (store *EventSourcedObjectStore) Get(ctx context.Context, fileID string) (*Object, error) {
+func (store *EventSourcedObjectStore) Get(ctx context.Context, fileID string) (*storageservice.File, error) {
 	store.catchUp(ctx)
 	object, ok := store.objectByFileID[fileID]
 	if !ok {
@@ -65,7 +66,7 @@ func (store *EventSourcedObjectStore) Get(ctx context.Context, fileID string) (*
 func (store *EventSourcedObjectStore) List(ctx context.Context, input ListInput) (*ListOutput, error) {
 	fatal.Unless(input.Limit > 0, "list limit must be positive")
 	store.catchUp(ctx)
-	var after *Object
+	var after *storageservice.File
 	if input.After != "" {
 		object, ok := store.objectByFileID[input.After]
 		if !ok || !strings.HasPrefix(object.Key, input.KeyPrefix) {
@@ -74,7 +75,7 @@ func (store *EventSourcedObjectStore) List(ctx context.Context, input ListInput)
 		after = object
 	}
 	page, hasMore := store.objects.Page(PageInput{KeyPrefix: input.KeyPrefix, After: after, Limit: input.Limit})
-	output := &ListOutput{Objects: make([]*Object, len(page))}
+	output := &ListOutput{Objects: make([]*storageservice.File, len(page))}
 	for index, object := range page {
 		copied := *object
 		output.Objects[index] = &copied

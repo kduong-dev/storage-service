@@ -6,6 +6,7 @@ import (
 
 	"github.com/kduong-dev/goutil/eventsource"
 	"github.com/kduong-dev/storage-service/internal/file"
+	"github.com/kduong-dev/storage-service/pkg/storageservice"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -14,7 +15,7 @@ func TestEventSourcedObjectStore(t *testing.T) {
 		ctx := context.Background()
 		log := eventsource.NewInMemoryLog("storage:files")
 		store := file.NewEventSourcedObjectStore(file.NewEventSourcedObjectStoreInput{Log: log})
-		object := &file.Object{
+		object := &storageservice.File{
 			ID:          "file-1",
 			UploadID:    "upload-1",
 			Key:         "alpha-service/reports/report.html",

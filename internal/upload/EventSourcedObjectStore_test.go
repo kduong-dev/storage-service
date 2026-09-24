@@ -6,6 +6,7 @@ import (
 
 	"github.com/kduong-dev/goutil/eventsource"
 	"github.com/kduong-dev/storage-service/internal/upload"
+	"github.com/kduong-dev/storage-service/pkg/storageservice"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -14,22 +15,22 @@ func TestEventSourcedObjectStore(t *testing.T) {
 		ctx := context.Background()
 		log := eventsource.NewInMemoryLog("storage:uploads")
 		store := upload.NewEventSourcedObjectStore(upload.NewEventSourcedObjectStoreInput{Log: log})
-		So(store.Initialise(ctx, &upload.Object{
+		So(store.Initialise(ctx, &storageservice.Upload{
 			ID:          "upload-1",
 			Key:         "alpha-service/reports/report.html",
 			ContentType: "text/html",
 			CreatedAt:   "2026-01-01T00:00:00Z",
 		}), ShouldBeNil)
-		recordPart := func(part upload.Part, updatedAt string) error {
+		recordPart := func(part storageservice.Part, updatedAt string) error {
 			return store.RecordPart(ctx, upload.RecordPartInput{UploadID: "upload-1", Part: part, UpdatedAt: updatedAt})
 		}
 		Convey("When a part is recorded twice under the same number", func() {
-			So(recordPart(upload.Part{Number: 1, Size: 5, Checksum: "first"}, "2026-01-01T00:00:01Z"), ShouldBeNil)
-			So(recordPart(upload.Part{Number: 1, Size: 7, Checksum: "second"}, "2026-01-01T00:00:02Z"), ShouldBeNil)
+			So(recordPart(storageservice.Part{PartNumber: 1, Size: 5, Checksum: "first"}, "2026-01-01T00:00:01Z"), ShouldBeNil)
+			So(recordPart(storageservice.Part{PartNumber: 1, Size: 7, Checksum: "second"}, "2026-01-01T00:00:02Z"), ShouldBeNil)
 			fetched, err := store.Get(ctx, "upload-1")
 			Convey("Then the later part replaces the earlier one", func() {
 				So(err, ShouldBeNil)
-				So(fetched.Parts, ShouldResemble, []upload.Part{{Number: 1, Size: 7, Checksum: "second"}})
+				So(fetched.Parts, ShouldResemble, []storageservice.Part{{PartNumber: 1, Size: 7, Checksum: "second"}})
 				So(fetched.UpdatedAt, ShouldEqual, "2026-01-01T00:00:02Z")
 			})
 		})
@@ -44,7 +45,7 @@ func TestEventSourcedObjectStore(t *testing.T) {
 			Convey("Then it is removed from the store", func() {
 				_, err := store.Get(ctx, "upload-1")
 				So(err, ShouldEqual, upload.ErrNotFound)
-				So(recordPart(upload.Part{Number: 2}, "2026-01-01T00:00:04Z"), ShouldEqual, upload.ErrNotFound)
+				So(recordPart(storageservice.Part{PartNumber: 2}, "2026-01-01T00:00:04Z"), ShouldEqual, upload.ErrNotFound)
 				So(store.Abort(ctx, upload.AbortInput{
 					UploadID:  "upload-1",
 					UpdatedAt: "2026-01-01T00:00:04Z",
@@ -64,12 +65,12 @@ func TestEventSourcedObjectStore(t *testing.T) {
 			Convey("Then it is removed from the store", func() {
 				_, err := store.Get(ctx, "upload-1")
 				So(err, ShouldEqual, upload.ErrNotFound)
-				So(recordPart(upload.Part{Number: 1}, "2026-01-01T00:00:04Z"), ShouldEqual, upload.ErrNotFound)
+				So(recordPart(storageservice.Part{PartNumber: 1}, "2026-01-01T00:00:04Z"), ShouldEqual, upload.ErrNotFound)
 				So(store.Complete(ctx, upload.CompleteInput{UploadID: "upload-1"}), ShouldEqual, upload.ErrNotFound)
 			})
 		})
 		Convey("When a fetched upload is modified by the caller", func() {
-			So(recordPart(upload.Part{Number: 1, Size: 5}, "2026-01-01T00:00:01Z"), ShouldBeNil)
+			So(recordPart(storageservice.Part{PartNumber: 1, Size: 5}, "2026-01-01T00:00:01Z"), ShouldBeNil)
 			fetched, err := store.Get(ctx, "upload-1")
 			So(err, ShouldBeNil)
 			fetched.Key = "beta-service/reports/report.html"
@@ -90,7 +91,7 @@ func TestEventSourcedObjectStore(t *testing.T) {
 			})
 		})
 		Convey("When an unknown upload is changed", func() {
-			err := store.RecordPart(ctx, upload.RecordPartInput{UploadID: "upload-missing", Part: upload.Part{Number: 1}})
+			err := store.RecordPart(ctx, upload.RecordPartInput{UploadID: "upload-missing", Part: storageservice.Part{PartNumber: 1}})
 			Convey("Then it reports the upload as not found", func() {
 				So(err, ShouldEqual, upload.ErrNotFound)
 			})

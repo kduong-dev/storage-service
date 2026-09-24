@@ -13,6 +13,7 @@ import (
 	"github.com/kduong-dev/storage-service/internal/file"
 	"github.com/kduong-dev/storage-service/internal/storage"
 	"github.com/kduong-dev/storage-service/internal/upload"
+	"github.com/kduong-dev/storage-service/pkg/storageservice"
 )
 
 type Handler struct {
@@ -49,7 +50,7 @@ func NewRouter(input NewRouterInput) *mux.Router {
 // getUpload returns the upload only when it belongs to the caller's
 // namespace; uploads in other namespaces are reported as not found so their
 // existence isn't disclosed.
-func (handler *Handler) getUpload(ctx context.Context, uploadID string) (*upload.Object, error) {
+func (handler *Handler) getUpload(ctx context.Context, uploadID string) (*storageservice.Upload, error) {
 	object, err := handler.uploadObjectStore.Get(ctx, uploadID)
 	if errors.Is(err, upload.ErrNotFound) {
 		return nil, merry.Wrap(err).WithHTTPCode(http.StatusNotFound).WithUserMessage("upload not found")

@@ -56,7 +56,7 @@ func (handler *Handler) UploadPart(responseWriter http.ResponseWriter, request *
 	}
 	err = handler.uploadObjectStore.RecordPart(ctx, upload.RecordPartInput{
 		UploadID:  uploadID,
-		Part:      upload.Part{Number: partNumber, Size: output.Size, Checksum: output.Checksum},
+		Part:      storageservice.Part{PartNumber: partNumber, Size: output.Size, Checksum: output.Checksum},
 		UpdatedAt: time.Now().UTC().Format(time.RFC3339),
 	})
 	if errors.Is(err, upload.ErrNotFound) {

@@ -29,16 +29,17 @@ type Upload struct {
 	ID          string `json:"id"`
 	Key         string `json:"key"`
 	ContentType string `json:"content_type"`
-	Parts       []Part `json:"parts,omitempty"`
-	CreatedAt   string `json:"created_at"`
-	UpdatedAt   string `json:"updated_at"`
+	// Parts received so far, indexed by part number (1-based).
+	Parts     []Part `json:"parts,omitempty"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
 }
 
 // Part describes one uploaded chunk.
 type Part struct {
 	PartNumber int    `json:"part_number"`
 	Size       int64  `json:"size"`
-	Checksum   string `json:"checksum"`
+	Checksum   string `json:"checksum"` // hex-encoded MD5 of the part bytes
 }
 
 // File is the completed, stored object produced after an upload is finalised.
@@ -48,7 +49,7 @@ type File struct {
 	Key         string `json:"key"`
 	ContentType string `json:"content_type"`
 	Size        int64  `json:"size"`
-	Checksum    string `json:"checksum"`
+	Checksum    string `json:"checksum"` // hex-encoded MD5 of the full file
 	CreatedAt   string `json:"created_at"`
 }
 

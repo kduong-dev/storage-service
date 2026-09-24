@@ -3,6 +3,8 @@ package file
 import (
 	"context"
 	"sync"
+
+	"github.com/kduong-dev/storage-service/pkg/storageservice"
 )
 
 var _ ObjectStore = (*ObjectStoreThreadSafeDecorator)(nil)
@@ -20,13 +22,13 @@ func NewObjectStoreThreadSafeDecorator(input NewObjectStoreThreadSafeDecoratorIn
 	return &ObjectStoreThreadSafeDecorator{decorated: input.Decorated}
 }
 
-func (decorator *ObjectStoreThreadSafeDecorator) Put(ctx context.Context, object *Object) error {
+func (decorator *ObjectStoreThreadSafeDecorator) Put(ctx context.Context, object *storageservice.File) error {
 	decorator.mutex.Lock()
 	defer decorator.mutex.Unlock()
 	return decorator.decorated.Put(ctx, object)
 }
 
-func (decorator *ObjectStoreThreadSafeDecorator) Get(ctx context.Context, fileID string) (*Object, error) {
+func (decorator *ObjectStoreThreadSafeDecorator) Get(ctx context.Context, fileID string) (*storageservice.File, error) {
 	decorator.mutex.Lock()
 	defer decorator.mutex.Unlock()
 	return decorator.decorated.Get(ctx, fileID)

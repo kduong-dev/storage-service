@@ -11,9 +11,9 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/kduong-dev/goutil/fatal"
 	"github.com/kduong-dev/goutil/httpx"
-	"github.com/kduong-dev/storage-service/internal/file"
 	"github.com/kduong-dev/storage-service/internal/storage"
 	"github.com/kduong-dev/storage-service/internal/upload"
+	"github.com/kduong-dev/storage-service/pkg/storageservice"
 )
 
 func (handler *Handler) CompleteUpload(responseWriter http.ResponseWriter, request *http.Request) {
@@ -36,7 +36,7 @@ func (handler *Handler) CompleteUpload(responseWriter http.ResponseWriter, reque
 	}
 	partNumbers := make([]int, len(uploadObject.Parts))
 	for index, part := range uploadObject.Parts {
-		partNumbers[index] = part.Number
+		partNumbers[index] = part.PartNumber
 	}
 	sort.Ints(partNumbers)
 	fileID := uuid.NewString()
@@ -66,7 +66,7 @@ func (handler *Handler) CompleteUpload(responseWriter http.ResponseWriter, reque
 		return
 	}
 	fatal.OnError(err)
-	fileObject := &file.Object{
+	fileObject := &storageservice.File{
 		ID:          fileID,
 		UploadID:    uploadID,
 		Key:         uploadObject.Key,
@@ -76,5 +76,5 @@ func (handler *Handler) CompleteUpload(responseWriter http.ResponseWriter, reque
 		CreatedAt:   now,
 	}
 	fatal.OnError(handler.fileObjectStore.Put(ctx, fileObject))
-	httpx.SendJSONResponse(responseWriter, http.StatusCreated, toFile(fileObject))
+	httpx.SendJSONResponse(responseWriter, http.StatusCreated, fileObject)
 }
