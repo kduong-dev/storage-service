@@ -15,7 +15,7 @@ import (
 )
 
 func main() {
-	namespace := flag.String("namespace", "", "namespace the key grants access to, e.g. trading-core")
+	namespace := flag.String("namespace", "", "namespace the key grants access to, e.g. example-service")
 	flag.Parse()
 	fatal.Unless(*namespace != "", "-namespace is required")
 	secret := make([]byte, 32)

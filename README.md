@@ -35,7 +35,7 @@ Client side (`storageservice.ClientFromEnv`): `STORAGE_SERVICE_CLIENT_IMPLEMENTA
 ## Issuing a key
 
 ```sh
-go run ./cmd/api-key-generator -namespace remarkable-shelf
+go run ./cmd/api-key-generator -namespace example-service
 ```
 
 Give the raw key to the calling service; add the hash to `STORAGE_CLIENTS_B64_JSON`.

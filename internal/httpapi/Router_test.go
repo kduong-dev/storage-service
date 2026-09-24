@@ -30,13 +30,13 @@ func newClient(server *httptest.Server, apiKey string) storageservice.Client {
 }
 
 func TestRouter(t *testing.T) {
-	Convey("Given a storage service with trading-core and remarkable-shelf clients", t, func() {
+	Convey("Given a storage service with alpha-service and beta-service clients", t, func() {
 		log := eventsource.NewInMemoryLog("storage:events")
 		router := httpapi.NewRouter(httpapi.NewRouterInput{
 			APIKeyMiddleware: apikey.NewMiddleware(apikey.NewMiddlewareInput{
 				NamespaceByKeyHash: map[string]string{
-					apikey.HashAPIKey("trading-key"): "trading-core",
-					apikey.HashAPIKey("shelf-key"):   "remarkable-shelf",
+					apikey.HashAPIKey("alpha-key"): "alpha-service",
+					apikey.HashAPIKey("beta-key"):  "beta-service",
 				},
 			}),
 			FileInfoStore: fileinfostore.NewInMemoryStore(fileinfostore.NewInMemoryStoreInput{Log: log}),
@@ -45,25 +45,25 @@ func TestRouter(t *testing.T) {
 		server := httptest.NewServer(router)
 		defer server.Close()
 		ctx := context.Background()
-		tradingClient := newClient(server, "trading-key")
-		shelfClient := newClient(server, "shelf-key")
+		alphaClient := newClient(server, "alpha-key")
+		betaClient := newClient(server, "beta-key")
 
-		Convey("When trading-core uploads a file", func() {
-			file, err := storageservice.UploadFile(ctx, tradingClient, storageservice.UploadFileInput{
+		Convey("When alpha-service uploads a file", func() {
+			file, err := storageservice.UploadFile(ctx, alphaClient, storageservice.UploadFileInput{
 				Key:         "reports/job-1/report.html",
 				ContentType: "text/html",
 				Body:        strings.NewReader("<h1>report</h1>"),
 			})
 			So(err, ShouldBeNil)
 
-			Convey("Then the file is stored under the trading-core namespace", func() {
-				So(file.Namespace, ShouldEqual, "trading-core")
-				So(file.Key, ShouldEqual, "trading-core/reports/job-1/report.html")
+			Convey("Then the file is stored under the alpha-service namespace", func() {
+				So(file.Namespace, ShouldEqual, "alpha-service")
+				So(file.Key, ShouldEqual, "alpha-service/reports/job-1/report.html")
 				So(file.Size, ShouldEqual, len("<h1>report</h1>"))
 			})
 
-			Convey("Then trading-core can download it", func() {
-				download, err := tradingClient.DownloadFile(ctx, file.ID)
+			Convey("Then alpha-service can download it", func() {
+				download, err := alphaClient.DownloadFile(ctx, file.ID)
 				So(err, ShouldBeNil)
 				defer download.Body.Close()
 				body, err := io.ReadAll(download.Body)
@@ -72,53 +72,53 @@ func TestRouter(t *testing.T) {
 				So(download.ContentType, ShouldEqual, "text/html")
 			})
 
-			Convey("Then remarkable-shelf cannot see it", func() {
-				_, err := shelfClient.DownloadFile(ctx, file.ID)
+			Convey("Then beta-service cannot see it", func() {
+				_, err := betaClient.DownloadFile(ctx, file.ID)
 				So(errors.Is(err, storageservice.ErrFileNotFound), ShouldBeTrue)
 			})
 		})
 
-		Convey("When trading-core starts an upload", func() {
-			upload, err := tradingClient.InitialiseUpload(ctx, "reports/job-2/report.html", "text/html")
+		Convey("When alpha-service starts an upload", func() {
+			upload, err := alphaClient.InitialiseUpload(ctx, "reports/job-2/report.html", "text/html")
 			So(err, ShouldBeNil)
 
-			Convey("Then remarkable-shelf cannot add parts to it", func() {
-				_, err := shelfClient.UploadPart(ctx, upload.ID, 1, strings.NewReader("intrusion"))
+			Convey("Then beta-service cannot add parts to it", func() {
+				_, err := betaClient.UploadPart(ctx, upload.ID, 1, strings.NewReader("intrusion"))
 				So(errors.Is(err, storageservice.ErrUploadNotFound), ShouldBeTrue)
 			})
 
-			Convey("Then remarkable-shelf cannot complete it", func() {
-				_, err := shelfClient.CompleteUpload(ctx, upload.ID)
+			Convey("Then beta-service cannot complete it", func() {
+				_, err := betaClient.CompleteUpload(ctx, upload.ID)
 				So(errors.Is(err, storageservice.ErrUploadNotFound), ShouldBeTrue)
 			})
 
-			Convey("Then remarkable-shelf cannot abort it", func() {
-				err := shelfClient.AbortUpload(ctx, upload.ID)
+			Convey("Then beta-service cannot abort it", func() {
+				err := betaClient.AbortUpload(ctx, upload.ID)
 				So(errors.Is(err, storageservice.ErrUploadNotFound), ShouldBeTrue)
 			})
 
-			Convey("And trading-core aborts it", func() {
-				So(tradingClient.AbortUpload(ctx, upload.ID), ShouldBeNil)
+			Convey("And alpha-service aborts it", func() {
+				So(alphaClient.AbortUpload(ctx, upload.ID), ShouldBeNil)
 
 				Convey("Then no more parts can be added", func() {
-					_, err := tradingClient.UploadPart(ctx, upload.ID, 1, strings.NewReader("late part"))
+					_, err := alphaClient.UploadPart(ctx, upload.ID, 1, strings.NewReader("late part"))
 					So(errors.Is(err, storageservice.ErrUploadNotActive), ShouldBeTrue)
 				})
 
 				Convey("Then it cannot be completed", func() {
-					_, err := tradingClient.CompleteUpload(ctx, upload.ID)
+					_, err := alphaClient.CompleteUpload(ctx, upload.ID)
 					So(errors.Is(err, storageservice.ErrUploadNotActive), ShouldBeTrue)
 				})
 
 				Convey("Then it cannot be aborted again", func() {
-					err := tradingClient.AbortUpload(ctx, upload.ID)
+					err := alphaClient.AbortUpload(ctx, upload.ID)
 					So(errors.Is(err, storageservice.ErrUploadNotActive), ShouldBeTrue)
 				})
 			})
 		})
 
 		Convey("When a client uses a key that escapes its namespace", func() {
-			_, err := tradingClient.InitialiseUpload(ctx, "../remarkable-shelf/books/secret.pdf", "application/pdf")
+			_, err := alphaClient.InitialiseUpload(ctx, "../beta-service/books/secret.pdf", "application/pdf")
 
 			Convey("Then the upload is rejected as a bad request", func() {
 				So(errors.Is(err, storageservice.ErrBadRequest), ShouldBeTrue)

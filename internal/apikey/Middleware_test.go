@@ -10,9 +10,9 @@ import (
 )
 
 func TestMiddleware(t *testing.T) {
-	Convey("Given a middleware with an API key issued to the trading-core namespace", t, func() {
+	Convey("Given a middleware with an API key issued to the alpha-service namespace", t, func() {
 		middleware := apikey.NewMiddleware(apikey.NewMiddlewareInput{
-			NamespaceByKeyHash: map[string]string{apikey.HashAPIKey("secret-key"): "trading-core"},
+			NamespaceByKeyHash: map[string]string{apikey.HashAPIKey("secret-key"): "alpha-service"},
 		})
 		var observedNamespace string
 		handler := middleware.Handle(http.HandlerFunc(func(responseWriter http.ResponseWriter, request *http.Request) {
@@ -31,7 +31,7 @@ func TestMiddleware(t *testing.T) {
 			responseRecorder := serve("Bearer secret-key")
 			Convey("Then the request reaches the handler scoped to that namespace", func() {
 				So(responseRecorder.Code, ShouldEqual, http.StatusOK)
-				So(observedNamespace, ShouldEqual, "trading-core")
+				So(observedNamespace, ShouldEqual, "alpha-service")
 			})
 		})
 		Convey("When a request presents an unknown key", func() {

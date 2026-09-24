@@ -39,12 +39,12 @@ func TestFileSystemStorage(t *testing.T) {
 					output, err := fileSystemStorage.CompleteUpload(ctx, storage.CompleteUploadInput{
 						UploadID:    "upload-1",
 						FileID:      "file-1",
-						Key:         "trading-core/reports/report.txt",
+						Key:         "alpha-service/reports/report.txt",
 						PartNumbers: []int{2, 1},
 					})
 					So(err, ShouldBeNil)
 					So(output.Size, ShouldEqual, len("hello world"))
-					readSeekCloser, err := fileSystemStorage.OpenFile("trading-core/reports/report.txt")
+					readSeekCloser, err := fileSystemStorage.OpenFile("alpha-service/reports/report.txt")
 					So(err, ShouldBeNil)
 					defer readSeekCloser.Close()
 					content, err := io.ReadAll(readSeekCloser)

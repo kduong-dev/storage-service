@@ -17,8 +17,8 @@ func TestInMemoryStore(t *testing.T) {
 		store := fileinfostore.NewInMemoryStore(fileinfostore.NewInMemoryStoreInput{Log: log})
 		So(store.InitialiseUpload(ctx, &upload.Object{
 			ID:          "upload-1",
-			Namespace:   "trading-core",
-			Key:         "trading-core/reports/report.html",
+			Namespace:   "alpha-service",
+			Key:         "alpha-service/reports/report.html",
 			ContentType: "text/html",
 			CreatedAt:   "2026-01-01T00:00:00Z",
 		}), ShouldBeNil)
@@ -47,8 +47,8 @@ func TestInMemoryStore(t *testing.T) {
 			Convey("Then the file info carries the upload's namespace, key and content type", func() {
 				fileInfo, err := store.GetFileInfo(ctx, "file-1")
 				So(err, ShouldBeNil)
-				So(fileInfo.Namespace, ShouldEqual, "trading-core")
-				So(fileInfo.Key, ShouldEqual, "trading-core/reports/report.html")
+				So(fileInfo.Namespace, ShouldEqual, "alpha-service")
+				So(fileInfo.Key, ShouldEqual, "alpha-service/reports/report.html")
 				So(fileInfo.ContentType, ShouldEqual, "text/html")
 				So(fileInfo.Size, ShouldEqual, 10)
 			})
@@ -91,7 +91,7 @@ func TestInMemoryStore(t *testing.T) {
 
 			Convey("Then it sees the uploads recorded so far", func() {
 				So(err, ShouldBeNil)
-				So(object.Namespace, ShouldEqual, "trading-core")
+				So(object.Namespace, ShouldEqual, "alpha-service")
 			})
 		})
 
@@ -125,13 +125,13 @@ func TestInMemoryStore(t *testing.T) {
 		Convey("When the store is configured with a legacy namespace", func() {
 			store := fileinfostore.NewInMemoryStore(fileinfostore.NewInMemoryStoreInput{
 				Log:             log,
-				LegacyNamespace: "trading-core",
+				LegacyNamespace: "alpha-service",
 			})
 			fileInfo, err := store.GetFileInfo(ctx, "file-1")
 
 			Convey("Then the legacy file is assigned to that namespace and keeps its stored key", func() {
 				So(err, ShouldBeNil)
-				So(fileInfo.Namespace, ShouldEqual, "trading-core")
+				So(fileInfo.Namespace, ShouldEqual, "alpha-service")
 				So(fileInfo.Key, ShouldEqual, "user-42/reports/job-1/report.html")
 				So(fileInfo.Size, ShouldEqual, 10)
 			})
