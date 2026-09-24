@@ -26,7 +26,7 @@ func TestObjectStoreThreadSafeDecorator(t *testing.T) {
 			for index := range errs {
 				waitGroup.Go(func() {
 					fileID := "file-" + strconv.Itoa(index)
-					if errs[index] = store.Put(ctx, &storageservice.File{ID: fileID}); errs[index] == nil {
+					if _, errs[index] = store.Put(ctx, &storageservice.File{ID: fileID}); errs[index] == nil {
 						_, errs[index] = store.Get(ctx, fileID)
 					}
 				})

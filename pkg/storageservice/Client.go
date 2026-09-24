@@ -29,9 +29,11 @@ type Part struct {
 
 // File is the completed, stored object produced after an upload is finalised.
 type File struct {
-	ID          string `json:"id"`
-	UploadID    string `json:"upload_id"`
-	Key         string `json:"key"`
+	ID  string `json:"id"`
+	Key string `json:"key"`
+	// Revision counts the files completed under Key, starting at 1. Deleted
+	// revisions are not reused.
+	Revision    int    `json:"revision"`
 	ContentType string `json:"content_type"`
 	Size        int64  `json:"size"`
 	Checksum    string `json:"checksum"` // hex-encoded MD5 of the full file
@@ -59,9 +61,12 @@ type Client interface {
 	// The caller is responsible for closing DownloadFileResponse.Body.
 	DownloadFile(ctx context.Context, input DownloadFileInput) (*DownloadFileResponse, error)
 
-	// ListFiles returns one page of the caller's files, ordered by key. Pass
+	// ListFileObjects returns one page of the caller's files, ordered by key. Pass
 	// the returned NextCursor back as Cursor to fetch the next page.
-	ListFiles(ctx context.Context, input ListFilesInput) (*ListFilesResponse, error)
+	ListFileObjects(ctx context.Context, input ListFileObjectsInput) (*ListFileObjectsResponse, error)
+
+	// DeleteFile removes the file and its metadata.
+	DeleteFile(ctx context.Context, input DeleteFileInput) error
 }
 
 // InitialiseUploadInput is also the request body sent to the server.
@@ -101,7 +106,11 @@ type DownloadFileResponse struct {
 	Body               io.ReadCloser
 }
 
-type ListFilesInput struct {
+type DeleteFileInput struct {
+	FileID string
+}
+
+type ListFileObjectsInput struct {
 	// Prefix filters to keys starting with it, relative to the caller's namespace.
 	Prefix string
 	Cursor string
@@ -109,7 +118,7 @@ type ListFilesInput struct {
 	Limit int
 }
 
-type ListFilesResponse struct {
+type ListFileObjectsResponse struct {
 	Files []*File `json:"files"`
 	// NextCursor is empty on the last page.
 	NextCursor string `json:"next_cursor,omitempty"`

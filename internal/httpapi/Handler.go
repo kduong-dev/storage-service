@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/gorilla/mux"
+	"github.com/kduong-dev/goutil/httpx"
 	"github.com/kduong-dev/storage-service/internal/apikey"
 	"github.com/kduong-dev/storage-service/internal/file"
 	"github.com/kduong-dev/storage-service/internal/storage"
@@ -39,8 +40,9 @@ func NewRouter(input NewRouterInput) *mux.Router {
 	publicRouter.HandleFunc("/uploads/{upload_id}/parts/{part_number}", handler.UploadPart).Methods(http.MethodPut).Name("UploadPart")
 	publicRouter.HandleFunc("/uploads/{upload_id}/complete", handler.CompleteUpload).Methods(http.MethodPost).Name("CompleteUpload")
 	publicRouter.HandleFunc("/uploads/{upload_id}/abort", handler.AbortUpload).Methods(http.MethodPost).Name("AbortUpload")
-	publicRouter.HandleFunc("/files", handler.ListFiles).Methods(http.MethodGet).Name("ListFiles")
+	publicRouter.HandleFunc("/files", handler.ListFileObjects).Methods(http.MethodGet).Name("ListFileObjects")
 	publicRouter.HandleFunc("/files/{file_id}", handler.DownloadFile).Methods(http.MethodGet).Name("DownloadFile")
+	publicRouter.HandleFunc("/files/{file_id}", handler.DeleteFile).Methods(http.MethodDelete).Name("DeleteFile")
 	return router
 }
 
@@ -58,8 +60,28 @@ func (handler *Handler) getUpload(ctx context.Context, uploadID string) (*storag
 	return object, nil
 }
 
+// getFile returns the file only when it belongs to the caller's namespace, for
+// the same reason as getUpload.
+func (handler *Handler) getFile(ctx context.Context, fileID string) (*storageservice.File, error) {
+	object, err := handler.fileObjectStore.Get(ctx, fileID)
+	if err = merrifiedSentinels.MerrifyOrFatal(err); err != nil {
+		return nil, err
+	}
+	if !handler.isInNamespace(ctx, object.Key) {
+		return nil, merrifiedSentinels.Merrify(file.ErrNotFound)
+	}
+	return object, nil
+}
+
 // isInNamespace reports whether the key sits under the caller's namespace.
 // The trailing slash stops namespace "alpha" from matching "alpha-service/".
 func (handler *Handler) isInNamespace(ctx context.Context, key string) bool {
 	return strings.HasPrefix(key, apikey.GetNamespace(ctx)+"/")
+}
+
+var merrifiedSentinels = httpx.MerrifiedSentinels{
+	{Sentinel: upload.ErrNotFound, StatusCode: http.StatusNotFound, UserMessage: "upload not found"},
+	{Sentinel: storage.ErrUploadNotFound, StatusCode: http.StatusNotFound, UserMessage: "upload not found"},
+	{Sentinel: file.ErrNotFound, StatusCode: http.StatusNotFound, UserMessage: "file not found"},
+	{Sentinel: file.ErrInvalidAfter, StatusCode: http.StatusBadRequest, UserMessage: "invalid cursor"},
 }

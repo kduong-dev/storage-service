@@ -16,8 +16,9 @@ All routes live under `/storage/v1` and require `Authorization: Bearer <api key>
 | `POST` | `/uploads/{upload_id}/abort` | Discard an upload and its parts |
 | `GET` | `/files?prefix=&limit=&cursor=` | List files by key; `limit` defaults to 100 (max 1000), pass `next_cursor` back as `cursor` for the next page |
 | `GET` | `/files/{file_id}` | Download (supports range requests) |
+| `DELETE` | `/files/{file_id}` | Delete a file |
 
-Keys are relative paths within the namespace; `..` segments are rejected. Resources in other namespaces return `404`.
+Keys are relative paths within the namespace; `..` segments are rejected. Completing another upload to an existing key adds a file with the next `revision` (starting at 1, never reused) rather than replacing it; list returns every revision, ordered by key then revision. Resources in other namespaces return `404`.
 
 Go callers use [`pkg/storageservice`](pkg/storageservice) — `storageservice.UploadFile` handles chunking.
 

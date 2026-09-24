@@ -41,17 +41,26 @@ func TestFileSystemStorage(t *testing.T) {
 					output, err := fileSystemStorage.CompleteUpload(ctx, storage.CompleteUploadInput{
 						UploadID:    "upload-1",
 						FileID:      "file-1",
-						Key:         "alpha-service/reports/report.txt",
 						PartNumbers: []int{2, 1},
 					})
 					So(err, ShouldBeNil)
 					So(output.Size, ShouldEqual, len("hello world"))
-					readSeekCloser, err := fileSystemStorage.OpenFile("alpha-service/reports/report.txt")
+					readSeekCloser, err := fileSystemStorage.OpenFile("file-1")
 					So(err, ShouldBeNil)
 					defer readSeekCloser.Close()
 					content, err := io.ReadAll(readSeekCloser)
 					So(err, ShouldBeNil)
 					So(string(content), ShouldEqual, "hello world")
+					Convey("And the file is deleted", func() {
+						So(fileSystemStorage.DeleteFile(ctx, "file-1"), ShouldBeNil)
+						Convey("Then it can no longer be opened", func() {
+							_, err := fileSystemStorage.OpenFile("file-1")
+							So(errors.Is(err, os.ErrNotExist), ShouldBeTrue)
+						})
+						Convey("Then deleting it again succeeds", func() {
+							So(fileSystemStorage.DeleteFile(ctx, "file-1"), ShouldBeNil)
+						})
+					})
 				})
 			})
 			Convey("And the upload is aborted", func() {
@@ -68,7 +77,6 @@ func TestFileSystemStorage(t *testing.T) {
 					_, err := fileSystemStorage.CompleteUpload(ctx, storage.CompleteUploadInput{
 						UploadID:    "upload-1",
 						FileID:      "file-1",
-						Key:         "alpha-service/reports/report.txt",
 						PartNumbers: []int{1},
 					})
 					So(err, ShouldEqual, storage.ErrUploadNotFound)

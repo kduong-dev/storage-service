@@ -17,13 +17,14 @@ func TestEventSourcedObjectStoreList(t *testing.T) {
 			Log: eventsource.NewInMemoryLog("storage:files"),
 		})
 		for _, object := range []*storageservice.File{
-			{ID: "file-c", Key: "alpha-service/reports/b.html"},
+			{ID: "file-b", Key: "alpha-service/reports/b.html"},
 			{ID: "file-a", Key: "alpha-service/reports/a.html"},
 			{ID: "file-d", Key: "alpha-service/images/logo.png"},
-			{ID: "file-b", Key: "alpha-service/reports/b.html"},
+			{ID: "file-c", Key: "alpha-service/reports/b.html"},
 			{ID: "file-e", Key: "beta-service/reports/a.html"},
 		} {
-			So(store.Put(ctx, object), ShouldBeNil)
+			_, err := store.Put(ctx, object)
+			So(err, ShouldBeNil)
 		}
 		listIDs := func(input file.ListInput) ([]string, string) {
 			output, err := store.List(ctx, input)
@@ -36,7 +37,7 @@ func TestEventSourcedObjectStoreList(t *testing.T) {
 		}
 		Convey("When listing a namespace in one page", func() {
 			ids, nextAfter := listIDs(file.ListInput{KeyPrefix: "alpha-service/", Limit: 10})
-			Convey("Then only that namespace is returned, ordered by key then ID, with no next page", func() {
+			Convey("Then only that namespace is returned, ordered by key then revision, with no next page", func() {
 				So(ids, ShouldResemble, []string{"file-d", "file-a", "file-b", "file-c"})
 				So(nextAfter, ShouldBeEmpty)
 			})
@@ -59,7 +60,8 @@ func TestEventSourcedObjectStoreList(t *testing.T) {
 		})
 		Convey("When a new file sorting before the cursor is added between pages", func() {
 			_, firstNext := listIDs(file.ListInput{KeyPrefix: "alpha-service/", Limit: 2})
-			So(store.Put(ctx, &storageservice.File{ID: "file-f", Key: "alpha-service/aaa.html"}), ShouldBeNil)
+			_, err := store.Put(ctx, &storageservice.File{ID: "file-f", Key: "alpha-service/aaa.html"})
+			So(err, ShouldBeNil)
 			secondIDs, _ := listIDs(file.ListInput{KeyPrefix: "alpha-service/", After: firstNext, Limit: 10})
 			Convey("Then the next page continues after the cursor without repeating files", func() {
 				So(secondIDs, ShouldResemble, []string{"file-b", "file-c"})

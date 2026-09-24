@@ -100,7 +100,17 @@ func (client *HTTPClient) DownloadFile(ctx context.Context, input DownloadFileIn
 	return
 }
 
-func (client *HTTPClient) ListFiles(ctx context.Context, input ListFilesInput) (output *ListFilesResponse, err error) {
+func (client *HTTPClient) DeleteFile(ctx context.Context, input DeleteFileInput) error {
+	path := fmt.Sprintf("/storage/v1/files/%s", url.PathEscape(input.FileID))
+	request := client.newRequest(ctx, http.MethodDelete, path, nil)
+	response, err := client.do(request, http.StatusNoContent, ErrFileNotFound)
+	if err != nil {
+		return err
+	}
+	return response.Body.Close()
+}
+
+func (client *HTTPClient) ListFileObjects(ctx context.Context, input ListFileObjectsInput) (output *ListFileObjectsResponse, err error) {
 	query := url.Values{}
 	if input.Prefix != "" {
 		query.Set("prefix", input.Prefix)

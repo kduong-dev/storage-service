@@ -7,12 +7,15 @@ import (
 )
 
 type ObjectStore interface {
-	Put(ctx context.Context, object *storageservice.File) error
+	// Put stores the object as the next revision of its key and returns the
+	// stored copy.
+	Put(ctx context.Context, object *storageservice.File) (*storageservice.File, error)
 	Get(ctx context.Context, fileID string) (*storageservice.File, error)
 	List(ctx context.Context, input ListInput) (*ListOutput, error)
+	Delete(ctx context.Context, fileID string) error
 }
 
-// ListInput pages through objects ordered by key, then ID. After is the ID of
+// ListInput pages through objects ordered by key, then revision. After is the ID of
 // the last object on the previous page, empty for the first page.
 type ListInput struct {
 	KeyPrefix string

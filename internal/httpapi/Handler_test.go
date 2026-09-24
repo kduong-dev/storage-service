@@ -87,6 +87,56 @@ func TestHandler(t *testing.T) {
 				_, err := newClient(server, "prefix-key").DownloadFile(ctx, storageservice.DownloadFileInput{FileID: uploadedFile.ID})
 				So(errors.Is(err, storageservice.ErrFileNotFound), ShouldBeTrue)
 			})
+			Convey("Then beta-service cannot delete it", func() {
+				err := betaClient.DeleteFile(ctx, storageservice.DeleteFileInput{FileID: uploadedFile.ID})
+				So(errors.Is(err, storageservice.ErrFileNotFound), ShouldBeTrue)
+				_, err = alphaClient.DownloadFile(ctx, storageservice.DownloadFileInput{FileID: uploadedFile.ID})
+				So(err, ShouldBeNil)
+			})
+			Convey("And alpha-service deletes it", func() {
+				So(alphaClient.DeleteFile(ctx, storageservice.DeleteFileInput{FileID: uploadedFile.ID}), ShouldBeNil)
+				Convey("Then it can no longer be downloaded", func() {
+					_, err := alphaClient.DownloadFile(ctx, storageservice.DownloadFileInput{FileID: uploadedFile.ID})
+					So(errors.Is(err, storageservice.ErrFileNotFound), ShouldBeTrue)
+				})
+				Convey("Then it is no longer listed", func() {
+					response, err := alphaClient.ListFileObjects(ctx, storageservice.ListFileObjectsInput{})
+					So(err, ShouldBeNil)
+					So(response.Files, ShouldBeEmpty)
+				})
+				Convey("Then it cannot be deleted again", func() {
+					err := alphaClient.DeleteFile(ctx, storageservice.DeleteFileInput{FileID: uploadedFile.ID})
+					So(errors.Is(err, storageservice.ErrFileNotFound), ShouldBeTrue)
+				})
+			})
+			Convey("And alpha-service uploads to the same key again", func() {
+				secondFile, err := storageservice.UploadFile(ctx, alphaClient, storageservice.UploadFileInput{
+					Key:         "reports/job-1/report.html",
+					ContentType: "text/html",
+					Body:        strings.NewReader("<h1>second</h1>"),
+				})
+				So(err, ShouldBeNil)
+				downloadBody := func(fileID string) string {
+					download, err := alphaClient.DownloadFile(ctx, storageservice.DownloadFileInput{FileID: fileID})
+					So(err, ShouldBeNil)
+					defer download.Body.Close()
+					body, err := io.ReadAll(download.Body)
+					So(err, ShouldBeNil)
+					return string(body)
+				}
+				Convey("Then it is the next revision and each revision keeps its own content", func() {
+					So(uploadedFile.Revision, ShouldEqual, 1)
+					So(secondFile.Revision, ShouldEqual, 2)
+					So(downloadBody(uploadedFile.ID), ShouldEqual, "<h1>report</h1>")
+					So(downloadBody(secondFile.ID), ShouldEqual, "<h1>second</h1>")
+				})
+				Convey("And the first revision is deleted", func() {
+					So(alphaClient.DeleteFile(ctx, storageservice.DeleteFileInput{FileID: uploadedFile.ID}), ShouldBeNil)
+					Convey("Then the second revision can still be downloaded", func() {
+						So(downloadBody(secondFile.ID), ShouldEqual, "<h1>second</h1>")
+					})
+				})
+			})
 		})
 		Convey("When alpha-service starts an upload", func() {
 			startedUpload, err := alphaClient.InitialiseUpload(ctx, storageservice.InitialiseUploadInput{Key: "reports/job-2/report.html", ContentType: "text/html"})
@@ -140,7 +190,7 @@ func TestHandler(t *testing.T) {
 			}
 			_, err := storageservice.UploadFile(ctx, betaClient, storageservice.UploadFileInput{Key: "reports/a.html", ContentType: "text/plain", Body: strings.NewReader("beta")})
 			So(err, ShouldBeNil)
-			listKeys := func(response *storageservice.ListFilesResponse) []string {
+			listKeys := func(response *storageservice.ListFileObjectsResponse) []string {
 				keys := make([]string, len(response.Files))
 				for index, listedFile := range response.Files {
 					keys[index] = listedFile.Key
@@ -148,28 +198,28 @@ func TestHandler(t *testing.T) {
 				return keys
 			}
 			Convey("Then alpha-service pages through only its own files in key order", func() {
-				firstPage, err := alphaClient.ListFiles(ctx, storageservice.ListFilesInput{Limit: 2})
+				firstPage, err := alphaClient.ListFileObjects(ctx, storageservice.ListFileObjectsInput{Limit: 2})
 				So(err, ShouldBeNil)
 				So(listKeys(firstPage), ShouldResemble, []string{"alpha-service/images/logo.png", "alpha-service/reports/a.html"})
 				So(firstPage.NextCursor, ShouldNotBeEmpty)
-				secondPage, err := alphaClient.ListFiles(ctx, storageservice.ListFilesInput{Cursor: firstPage.NextCursor, Limit: 2})
+				secondPage, err := alphaClient.ListFileObjects(ctx, storageservice.ListFileObjectsInput{Cursor: firstPage.NextCursor, Limit: 2})
 				So(err, ShouldBeNil)
 				So(listKeys(secondPage), ShouldResemble, []string{"alpha-service/reports/b.html"})
 				So(secondPage.NextCursor, ShouldBeEmpty)
 			})
 			Convey("Then alpha-service can filter by prefix", func() {
-				response, err := alphaClient.ListFiles(ctx, storageservice.ListFilesInput{Prefix: "reports/"})
+				response, err := alphaClient.ListFileObjects(ctx, storageservice.ListFileObjectsInput{Prefix: "reports/"})
 				So(err, ShouldBeNil)
 				So(listKeys(response), ShouldResemble, []string{"alpha-service/reports/a.html", "alpha-service/reports/b.html"})
 			})
 			Convey("Then beta-service cannot continue from alpha-service's cursor", func() {
-				firstPage, err := alphaClient.ListFiles(ctx, storageservice.ListFilesInput{Limit: 1})
+				firstPage, err := alphaClient.ListFileObjects(ctx, storageservice.ListFileObjectsInput{Limit: 1})
 				So(err, ShouldBeNil)
-				_, err = betaClient.ListFiles(ctx, storageservice.ListFilesInput{Cursor: firstPage.NextCursor})
+				_, err = betaClient.ListFileObjects(ctx, storageservice.ListFileObjectsInput{Cursor: firstPage.NextCursor})
 				So(errors.Is(err, storageservice.ErrBadRequest), ShouldBeTrue)
 			})
 			Convey("Then a limit above 1000 is rejected as a bad request", func() {
-				_, err := alphaClient.ListFiles(ctx, storageservice.ListFilesInput{Limit: 1001})
+				_, err := alphaClient.ListFileObjects(ctx, storageservice.ListFileObjectsInput{Limit: 1001})
 				So(errors.Is(err, storageservice.ErrBadRequest), ShouldBeTrue)
 			})
 		})

@@ -12,11 +12,11 @@ import (
 )
 
 const (
-	defaultListFilesLimit = 100
-	maxListFilesLimit     = 1000
+	defaultListFileObjectsLimit = 100
+	maxListFileObjectsLimit     = 1000
 )
 
-func (handler *Handler) ListFiles(responseWriter http.ResponseWriter, request *http.Request) {
+func (handler *Handler) ListFileObjects(responseWriter http.ResponseWriter, request *http.Request) {
 	var err error
 	defer func() {
 		if err != nil {
@@ -25,11 +25,11 @@ func (handler *Handler) ListFiles(responseWriter http.ResponseWriter, request *h
 	}()
 	ctx := request.Context()
 	query := request.URL.Query()
-	limit := defaultListFilesLimit
+	limit := defaultListFileObjectsLimit
 	if rawLimit := query.Get("limit"); rawLimit != "" {
 		limit, err = strconv.Atoi(rawLimit)
-		if err != nil || limit < 1 || limit > maxListFilesLimit {
-			err = merry.UserErrorf("limit must be an integer between 1 and %d", maxListFilesLimit).WithHTTPCode(http.StatusBadRequest)
+		if err != nil || limit < 1 || limit > maxListFileObjectsLimit {
+			err = merry.UserErrorf("limit must be an integer between 1 and %d", maxListFileObjectsLimit).WithHTTPCode(http.StatusBadRequest)
 			return
 		}
 	}
@@ -41,7 +41,7 @@ func (handler *Handler) ListFiles(responseWriter http.ResponseWriter, request *h
 	if err = merrifiedSentinels.MerrifyOrFatal(err); err != nil {
 		return
 	}
-	httpx.SendJSONResponse(responseWriter, http.StatusOK, storageservice.ListFilesResponse{
+	httpx.SendJSONResponse(responseWriter, http.StatusOK, storageservice.ListFileObjectsResponse{
 		Files:      output.Objects,
 		NextCursor: output.NextAfter,
 	})

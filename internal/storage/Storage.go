@@ -14,7 +14,9 @@ type Storage interface {
 	UploadPart(ctx context.Context, input UploadPartInput) (output *UploadPartOutput, err error)
 	CompleteUpload(ctx context.Context, input CompleteUploadInput) (output *CompleteUploadOutput, err error)
 	AbortUpload(ctx context.Context, uploadID string) error
-	OpenFile(key string) (io.ReadSeekCloser, error)
+	OpenFile(fileID string) (io.ReadSeekCloser, error)
+	// DeleteFile removes the assembled file; a missing file is not an error.
+	DeleteFile(ctx context.Context, fileID string) error
 }
 
 type UploadPartInput struct {
@@ -31,7 +33,6 @@ type UploadPartOutput struct {
 type CompleteUploadInput struct {
 	UploadID    string
 	FileID      string
-	Key         string
 	PartNumbers []int
 }
 

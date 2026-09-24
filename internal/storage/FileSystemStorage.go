@@ -48,6 +48,10 @@ func (storage *FileSystemStorage) getPartsDirectory(uploadID string) string {
 	return filepath.Join(storage.root, "parts", uploadID)
 }
 
+func (storage *FileSystemStorage) getObjectPath(fileID string) string {
+	return filepath.Join(storage.root, "objects", fileID)
+}
+
 func (storage *FileSystemStorage) InitialiseUpload(ctx context.Context, uploadID string) error {
 	partsDirectory := storage.getPartsDirectory(uploadID)
 	err := os.MkdirAll(partsDirectory, 0o755)
@@ -84,10 +88,7 @@ func (storage *FileSystemStorage) CompleteUpload(ctx context.Context, input Comp
 	}
 	fatal.OnError(err)
 	sortedPartNumbers := storage.getSortedPartNumbers(input.PartNumbers)
-	path := filepath.Join(storage.root, "objects", input.Key)
-	err = os.MkdirAll(filepath.Dir(path), 0o755)
-	fatal.OnError(err)
-	file, err := os.Create(path)
+	file, err := os.Create(storage.getObjectPath(input.FileID))
 	fatal.OnError(err)
 	defer file.Close()
 	hash := md5.New()
@@ -120,7 +121,15 @@ func (storage *FileSystemStorage) AbortUpload(ctx context.Context, uploadID stri
 	return nil
 }
 
-func (storage *FileSystemStorage) OpenFile(key string) (io.ReadSeekCloser, error) {
-	path := filepath.Join(storage.root, "objects", key)
-	return os.Open(path)
+func (storage *FileSystemStorage) OpenFile(fileID string) (io.ReadSeekCloser, error) {
+	return os.Open(storage.getObjectPath(fileID))
+}
+
+func (storage *FileSystemStorage) DeleteFile(ctx context.Context, fileID string) error {
+	err := os.Remove(storage.getObjectPath(fileID))
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
+	fatal.OnError(err)
+	return nil
 }

@@ -42,7 +42,6 @@ func (handler *Handler) CompleteUpload(responseWriter http.ResponseWriter, reque
 	output, err := handler.storage.CompleteUpload(ctx, storage.CompleteUploadInput{
 		UploadID:    uploadID,
 		FileID:      fileID,
-		Key:         uploadObject.Key,
 		PartNumbers: partNumbers,
 	})
 	if err != nil {
@@ -60,15 +59,14 @@ func (handler *Handler) CompleteUpload(responseWriter http.ResponseWriter, reque
 	if err = merrifiedSentinels.MerrifyOrFatal(err); err != nil {
 		return
 	}
-	fileObject := &storageservice.File{
+	fileObject, err := handler.fileObjectStore.Put(ctx, &storageservice.File{
 		ID:          fileID,
-		UploadID:    uploadID,
 		Key:         uploadObject.Key,
 		ContentType: uploadObject.ContentType,
 		Size:        output.Size,
 		Checksum:    output.Checksum,
 		CreatedAt:   now,
-	}
-	fatal.OnError(handler.fileObjectStore.Put(ctx, fileObject))
+	})
+	fatal.OnError(err)
 	httpx.SendJSONResponse(responseWriter, http.StatusCreated, fileObject)
 }

@@ -7,7 +7,6 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/kduong-dev/goutil/httpx"
-	"github.com/kduong-dev/storage-service/internal/file"
 )
 
 func (handler *Handler) DownloadFile(responseWriter http.ResponseWriter, request *http.Request) {
@@ -20,15 +19,11 @@ func (handler *Handler) DownloadFile(responseWriter http.ResponseWriter, request
 	ctx := request.Context()
 	vars := mux.Vars(request)
 	fileID := vars["file_id"]
-	object, err := handler.fileObjectStore.Get(ctx, fileID)
-	if err = merrifiedSentinels.MerrifyOrFatal(err); err != nil {
+	object, err := handler.getFile(ctx, fileID)
+	if err != nil {
 		return
 	}
-	if !handler.isInNamespace(ctx, object.Key) {
-		err = merrifiedSentinels.Merrify(file.ErrNotFound)
-		return
-	}
-	readSeekCloser, err := handler.storage.OpenFile(object.Key)
+	readSeekCloser, err := handler.storage.OpenFile(object.ID)
 	if err != nil {
 		return
 	}
