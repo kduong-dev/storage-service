@@ -1,6 +1,6 @@
 # storage-service
 
-Project-agnostic blob storage with S3-style multipart uploads. Metadata is event-sourced; bytes live in a pluggable backend (filesystem or in-memory).
+Project-agnostic blob storage with S3-style multipart uploads. Metadata is event-sourced; bytes live in a pluggable storage backend (currently the filesystem).
 
 The service has no notion of end users. Each calling service holds an API key that maps to a **namespace**, and every upload and file is confined to the namespace of the key that created it. Deciding which end user may see a file is the caller's responsibility (e.g. reporting-service checks job ownership before proxying a download).
 
@@ -26,7 +26,7 @@ Go callers use [`pkg/storageservice`](pkg/storageservice) — `storageservice.Up
 | Variable | Default | Description |
 |---|---|---|
 | `STORAGE_CLIENTS_B64_JSON` | required | base64 JSON `{"<namespace>": "<sha256 hex of api key>"}` |
-| `STORAGE_BACKEND` | `INMEMORY` | `INMEMORY` or `FILESYSTEM` |
+| `STORAGE` | `FILESYSTEM` | Storage backend; `FILESYSTEM` is the only one |
 | `STORAGE_FILESYSTEM_DIRECTORY` | `./tmp/storage` | Root directory for the filesystem backend |
 | `STORAGE_EVENT_LOG_FACTORY` | `INMEMORY` | `INMEMORY` or `REDIS` (+ `STORAGE_EVENT_LOG_REDIS_ADDRESS`); uploads and files use the `storage:uploads` and `storage:files` logs |
 | `PORT` | `8083` | Listen port |
