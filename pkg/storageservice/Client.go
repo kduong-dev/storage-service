@@ -29,7 +29,6 @@ type Part struct {
 
 // File is the completed, stored object produced after an upload is finalised.
 type File struct {
-	// ID is a UUIDv7, so files sharing a key sort oldest first by ID.
 	ID          string `json:"id"`
 	Key         string `json:"key"`
 	ContentType string `json:"content_type"`
