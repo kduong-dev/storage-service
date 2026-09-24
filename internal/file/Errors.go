@@ -1,4 +1,4 @@
-package fileinfostore
+package file
 
 import "errors"
 

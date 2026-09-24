@@ -1,11 +1,11 @@
-package fileinfostore_test
+package file_test
 
 import (
 	"context"
 	"testing"
 
 	"github.com/kduong-dev/goutil/eventsource"
-	"github.com/kduong-dev/storage-service/internal/fileinfostore"
+	"github.com/kduong-dev/storage-service/internal/file"
 	"github.com/kduong-dev/storage-service/internal/upload"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -14,7 +14,7 @@ func TestInMemoryStore(t *testing.T) {
 	Convey("Given an in-memory store backed by an empty event log", t, func() {
 		ctx := context.Background()
 		log := eventsource.NewInMemoryLog("storage:events")
-		store := fileinfostore.NewInMemoryStore(fileinfostore.NewInMemoryStoreInput{Log: log})
+		store := file.NewInMemoryStore(file.NewInMemoryStoreInput{Log: log})
 		So(store.InitialiseUpload(ctx, &upload.Object{
 			ID:          "upload-1",
 			Namespace:   "alpha-service",
@@ -36,7 +36,7 @@ func TestInMemoryStore(t *testing.T) {
 		})
 
 		Convey("When the upload is completed", func() {
-			So(store.CompleteUpload(ctx, fileinfostore.CompleteUploadInput{
+			So(store.CompleteUpload(ctx, file.CompleteUploadInput{
 				UploadID:  "upload-1",
 				FileID:    "file-1",
 				Size:      10,
@@ -57,7 +57,7 @@ func TestInMemoryStore(t *testing.T) {
 				object, err := store.GetUpload(ctx, "upload-1")
 				So(err, ShouldBeNil)
 				So(object.Status, ShouldEqual, upload.StatusCompleted)
-				So(store.AbortUpload(ctx, "upload-1", "2026-01-01T00:00:04Z"), ShouldEqual, fileinfostore.ErrUploadNotActive)
+				So(store.AbortUpload(ctx, "upload-1", "2026-01-01T00:00:04Z"), ShouldEqual, file.ErrUploadNotActive)
 			})
 		})
 
@@ -66,7 +66,7 @@ func TestInMemoryStore(t *testing.T) {
 
 			Convey("Then no more parts can be recorded", func() {
 				err := store.RecordPart(ctx, "upload-1", upload.Part{Number: 1}, "2026-01-01T00:00:04Z")
-				So(err, ShouldEqual, fileinfostore.ErrUploadNotActive)
+				So(err, ShouldEqual, file.ErrUploadNotActive)
 			})
 		})
 
@@ -86,7 +86,7 @@ func TestInMemoryStore(t *testing.T) {
 		})
 
 		Convey("When another store is built from the same event log", func() {
-			rebuilt := fileinfostore.NewInMemoryStore(fileinfostore.NewInMemoryStoreInput{Log: log})
+			rebuilt := file.NewInMemoryStore(file.NewInMemoryStoreInput{Log: log})
 			object, err := rebuilt.GetUpload(ctx, "upload-1")
 
 			Convey("Then it sees the uploads recorded so far", func() {
@@ -99,7 +99,7 @@ func TestInMemoryStore(t *testing.T) {
 			err := store.RecordPart(ctx, "upload-missing", upload.Part{Number: 1}, "2026-01-01T00:00:01Z")
 
 			Convey("Then it reports the upload as not found", func() {
-				So(err, ShouldEqual, fileinfostore.ErrUploadNotFound)
+				So(err, ShouldEqual, file.ErrUploadNotFound)
 			})
 		})
 
@@ -107,7 +107,7 @@ func TestInMemoryStore(t *testing.T) {
 			_, err := store.GetFileInfo(ctx, "file-missing")
 
 			Convey("Then it reports the file as not found", func() {
-				So(err, ShouldEqual, fileinfostore.ErrFileNotFound)
+				So(err, ShouldEqual, file.ErrFileNotFound)
 			})
 		})
 	})
@@ -123,7 +123,7 @@ func TestInMemoryStore(t *testing.T) {
 		So(err, ShouldBeNil)
 
 		Convey("When the store is configured with a legacy namespace", func() {
-			store := fileinfostore.NewInMemoryStore(fileinfostore.NewInMemoryStoreInput{
+			store := file.NewInMemoryStore(file.NewInMemoryStoreInput{
 				Log:             log,
 				LegacyNamespace: "alpha-service",
 			})
@@ -138,7 +138,7 @@ func TestInMemoryStore(t *testing.T) {
 		})
 
 		Convey("When the store has no legacy namespace", func() {
-			store := fileinfostore.NewInMemoryStore(fileinfostore.NewInMemoryStoreInput{Log: log})
+			store := file.NewInMemoryStore(file.NewInMemoryStoreInput{Log: log})
 			fileInfo, err := store.GetFileInfo(ctx, "file-1")
 
 			Convey("Then the legacy file belongs to no namespace, so no client can reach it", func() {

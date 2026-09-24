@@ -1,4 +1,4 @@
-package fileinfostore
+package file
 
 import (
 	"context"
@@ -8,7 +8,6 @@ import (
 	"github.com/kduong-dev/goutil/eventsource"
 	"github.com/kduong-dev/goutil/eventsource/subscription"
 	"github.com/kduong-dev/goutil/fatal"
-	"github.com/kduong-dev/storage-service/internal/fileinfo"
 	"github.com/kduong-dev/storage-service/internal/upload"
 )
 
@@ -24,7 +23,7 @@ type InMemoryStore struct {
 	cursor                int64
 	uploads               []*upload.Object
 	uploadIndexByID       map[string]int
-	fileInfos             []*fileinfo.FileInfo
+	fileInfos             []*Object
 	fileInfoIndexByFileID map[string]int
 }
 
@@ -123,7 +122,7 @@ func (store *InMemoryStore) GetUpload(ctx context.Context, uploadID string) (*up
 	return &copied, nil
 }
 
-func (store *InMemoryStore) GetFileInfo(ctx context.Context, fileID string) (*fileinfo.FileInfo, error) {
+func (store *InMemoryStore) GetFileInfo(ctx context.Context, fileID string) (*Object, error) {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
 	store.catchUp(ctx)
@@ -231,7 +230,7 @@ func (store *InMemoryStore) applyCompleted(event *UploadCompletedEvent) {
 	object.Status = upload.StatusCompleted
 	object.UpdatedAt = event.UpdatedAt
 	store.fileInfoIndexByFileID[event.FileID] = len(store.fileInfos)
-	store.fileInfos = append(store.fileInfos, &fileinfo.FileInfo{
+	store.fileInfos = append(store.fileInfos, &Object{
 		ID:          event.FileID,
 		Namespace:   object.Namespace,
 		UploadID:    event.UploadID,

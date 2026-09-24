@@ -12,7 +12,7 @@ import (
 
 	"github.com/kduong-dev/goutil/eventsource"
 	"github.com/kduong-dev/storage-service/internal/apikey"
-	"github.com/kduong-dev/storage-service/internal/fileinfostore"
+	"github.com/kduong-dev/storage-service/internal/file"
 	"github.com/kduong-dev/storage-service/internal/httpapi"
 	"github.com/kduong-dev/storage-service/internal/storage"
 	"github.com/kduong-dev/storage-service/pkg/storageservice"
@@ -39,7 +39,7 @@ func TestRouter(t *testing.T) {
 					apikey.HashAPIKey("beta-key"):  "beta-service",
 				},
 			}),
-			FileInfoStore: fileinfostore.NewInMemoryStore(fileinfostore.NewInMemoryStoreInput{Log: log}),
+			FileInfoStore: file.NewInMemoryStore(file.NewInMemoryStoreInput{Log: log}),
 			Storage:       storage.NewFileSystemStorage(storage.NewFileSystemStorageInput{Root: t.TempDir()}),
 		})
 		server := httptest.NewServer(router)
@@ -49,7 +49,7 @@ func TestRouter(t *testing.T) {
 		betaClient := newClient(server, "beta-key")
 
 		Convey("When alpha-service uploads a file", func() {
-			file, err := storageservice.UploadFile(ctx, alphaClient, storageservice.UploadFileInput{
+			uploadedFile, err := storageservice.UploadFile(ctx, alphaClient, storageservice.UploadFileInput{
 				Key:         "reports/job-1/report.html",
 				ContentType: "text/html",
 				Body:        strings.NewReader("<h1>report</h1>"),
@@ -57,13 +57,13 @@ func TestRouter(t *testing.T) {
 			So(err, ShouldBeNil)
 
 			Convey("Then the file is stored under the alpha-service namespace", func() {
-				So(file.Namespace, ShouldEqual, "alpha-service")
-				So(file.Key, ShouldEqual, "alpha-service/reports/job-1/report.html")
-				So(file.Size, ShouldEqual, len("<h1>report</h1>"))
+				So(uploadedFile.Namespace, ShouldEqual, "alpha-service")
+				So(uploadedFile.Key, ShouldEqual, "alpha-service/reports/job-1/report.html")
+				So(uploadedFile.Size, ShouldEqual, len("<h1>report</h1>"))
 			})
 
 			Convey("Then alpha-service can download it", func() {
-				download, err := alphaClient.DownloadFile(ctx, file.ID)
+				download, err := alphaClient.DownloadFile(ctx, uploadedFile.ID)
 				So(err, ShouldBeNil)
 				defer download.Body.Close()
 				body, err := io.ReadAll(download.Body)
@@ -73,7 +73,7 @@ func TestRouter(t *testing.T) {
 			})
 
 			Convey("Then beta-service cannot see it", func() {
-				_, err := betaClient.DownloadFile(ctx, file.ID)
+				_, err := betaClient.DownloadFile(ctx, uploadedFile.ID)
 				So(errors.Is(err, storageservice.ErrFileNotFound), ShouldBeTrue)
 			})
 		})

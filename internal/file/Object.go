@@ -1,7 +1,7 @@
-package fileinfo
+package file
 
-// FileInfo describes a completed upload's stored file.
-type FileInfo struct {
+// Object describes a completed upload's stored file.
+type Object struct {
 	ID          string `json:"id"`
 	Namespace   string `json:"namespace"`
 	UploadID    string `json:"upload_id"`

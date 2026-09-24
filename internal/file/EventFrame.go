@@ -1,4 +1,4 @@
-package fileinfostore
+package file
 
 import "github.com/kduong-dev/goutil/eventsource"
 

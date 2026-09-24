@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/kduong-dev/goutil/httpx"
-	"github.com/kduong-dev/storage-service/internal/fileinfostore"
+	"github.com/kduong-dev/storage-service/internal/file"
 	"github.com/kduong-dev/storage-service/internal/storage"
 )
 
@@ -46,7 +46,7 @@ func (handler *Handler) CompleteUpload(responseWriter http.ResponseWriter, reque
 	if err != nil {
 		return
 	}
-	err = handler.fileInfoStore.CompleteUpload(ctx, fileinfostore.CompleteUploadInput{
+	err = handler.fileInfoStore.CompleteUpload(ctx, file.CompleteUploadInput{
 		UploadID:  uploadID,
 		FileID:    fileID,
 		Size:      output.Size,

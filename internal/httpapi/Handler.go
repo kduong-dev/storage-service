@@ -8,20 +8,20 @@ import (
 	"github.com/ansel1/merry"
 	"github.com/gorilla/mux"
 	"github.com/kduong-dev/storage-service/internal/apikey"
-	"github.com/kduong-dev/storage-service/internal/fileinfo"
-	"github.com/kduong-dev/storage-service/internal/fileinfostore"
+	"github.com/kduong-dev/storage-service/internal/file"
+
 	"github.com/kduong-dev/storage-service/internal/storage"
 	"github.com/kduong-dev/storage-service/internal/upload"
 )
 
 type Handler struct {
-	fileInfoStore fileinfostore.Store
+	fileInfoStore file.Store
 	storage       storage.Storage
 }
 
 type NewRouterInput struct {
 	APIKeyMiddleware *apikey.Middleware
-	FileInfoStore    fileinfostore.Store
+	FileInfoStore    file.Store
 	Storage          storage.Storage
 }
 
@@ -50,7 +50,7 @@ func (handler *Handler) getUpload(ctx context.Context, uploadID string) (*upload
 		return nil, merrifyError(err)
 	}
 	if object.Namespace != apikey.GetNamespace(ctx) {
-		return nil, merrifyError(fileinfostore.ErrUploadNotFound)
+		return nil, merrifyError(file.ErrUploadNotFound)
 	}
 	return object, nil
 }
@@ -63,30 +63,30 @@ func (handler *Handler) getActiveUpload(ctx context.Context, uploadID string) (*
 		return nil, err
 	}
 	if object.Status != upload.StatusInitiated {
-		return nil, merrifyError(fileinfostore.ErrUploadNotActive)
+		return nil, merrifyError(file.ErrUploadNotActive)
 	}
 	return object, nil
 }
 
 // getFileInfo returns the file info only when it belongs to the caller's namespace.
-func (handler *Handler) getFileInfo(ctx context.Context, fileID string) (*fileinfo.FileInfo, error) {
+func (handler *Handler) getFileInfo(ctx context.Context, fileID string) (*file.Object, error) {
 	fileInfo, err := handler.fileInfoStore.GetFileInfo(ctx, fileID)
 	if err != nil {
 		return nil, merrifyError(err)
 	}
 	if fileInfo.Namespace != apikey.GetNamespace(ctx) {
-		return nil, merrifyError(fileinfostore.ErrFileNotFound)
+		return nil, merrifyError(file.ErrFileNotFound)
 	}
 	return fileInfo, nil
 }
 
 func merrifyError(err error) error {
 	switch {
-	case errors.Is(err, fileinfostore.ErrUploadNotFound):
+	case errors.Is(err, file.ErrUploadNotFound):
 		return merry.Wrap(err).WithHTTPCode(http.StatusNotFound).WithUserMessage("upload not found")
-	case errors.Is(err, fileinfostore.ErrFileNotFound):
+	case errors.Is(err, file.ErrFileNotFound):
 		return merry.Wrap(err).WithHTTPCode(http.StatusNotFound).WithUserMessage("file not found")
-	case errors.Is(err, fileinfostore.ErrUploadNotActive):
+	case errors.Is(err, file.ErrUploadNotActive):
 		return merry.Wrap(err).WithHTTPCode(http.StatusConflict).WithUserMessage("upload is not active")
 	}
 	return err
