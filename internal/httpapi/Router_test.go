@@ -40,12 +40,12 @@ func TestRouter(t *testing.T) {
 				},
 			}),
 			UploadObjectStore: upload.NewObjectStoreThreadSafeDecorator(upload.NewObjectStoreThreadSafeDecoratorInput{
-				Decorated: upload.NewInMemoryObjectStore(upload.NewInMemoryObjectStoreInput{
+				Decorated: upload.NewEventSourcedObjectStore(upload.NewEventSourcedObjectStoreInput{
 					Log: eventsource.NewInMemoryLog("storage:uploads"),
 				}),
 			}),
 			FileObjectStore: file.NewObjectStoreThreadSafeDecorator(file.NewObjectStoreThreadSafeDecoratorInput{
-				Decorated: file.NewInMemoryObjectStore(file.NewInMemoryObjectStoreInput{
+				Decorated: file.NewEventSourcedObjectStore(file.NewEventSourcedObjectStoreInput{
 					Log: eventsource.NewInMemoryLog("storage:files"),
 				}),
 			}),

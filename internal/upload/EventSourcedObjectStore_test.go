@@ -9,11 +9,11 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
-func TestInMemoryObjectStore(t *testing.T) {
-	Convey("Given an in-memory object store with an initialised upload", t, func() {
+func TestEventSourcedObjectStore(t *testing.T) {
+	Convey("Given an event-sourced object store with an initialised upload", t, func() {
 		ctx := context.Background()
 		log := eventsource.NewInMemoryLog("storage:uploads")
-		store := upload.NewInMemoryObjectStore(upload.NewInMemoryObjectStoreInput{Log: log})
+		store := upload.NewEventSourcedObjectStore(upload.NewEventSourcedObjectStoreInput{Log: log})
 		object := &upload.Object{
 			ID:          "upload-1",
 			Namespace:   "alpha-service",
@@ -82,7 +82,7 @@ func TestInMemoryObjectStore(t *testing.T) {
 		})
 
 		Convey("When another store is built from the same event log", func() {
-			rebuilt := upload.NewInMemoryObjectStore(upload.NewInMemoryObjectStoreInput{Log: log})
+			rebuilt := upload.NewEventSourcedObjectStore(upload.NewEventSourcedObjectStoreInput{Log: log})
 			fetched, err := rebuilt.Get(ctx, "upload-1")
 
 			Convey("Then it sees the uploads recorded so far", func() {

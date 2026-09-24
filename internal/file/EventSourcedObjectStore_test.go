@@ -9,11 +9,11 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
-func TestInMemoryObjectStore(t *testing.T) {
-	Convey("Given an in-memory object store backed by an empty event log", t, func() {
+func TestEventSourcedObjectStore(t *testing.T) {
+	Convey("Given an event-sourced object store backed by an empty event log", t, func() {
 		ctx := context.Background()
 		log := eventsource.NewInMemoryLog("storage:files")
-		store := file.NewInMemoryObjectStore(file.NewInMemoryObjectStoreInput{Log: log})
+		store := file.NewEventSourcedObjectStore(file.NewEventSourcedObjectStoreInput{Log: log})
 		object := &file.Object{
 			ID:          "file-1",
 			Namespace:   "alpha-service",
@@ -58,7 +58,7 @@ func TestInMemoryObjectStore(t *testing.T) {
 		})
 
 		Convey("When another store is built from the same event log", func() {
-			rebuilt := file.NewInMemoryObjectStore(file.NewInMemoryObjectStoreInput{Log: log})
+			rebuilt := file.NewEventSourcedObjectStore(file.NewEventSourcedObjectStoreInput{Log: log})
 			fetched, err := rebuilt.Get(ctx, "file-1")
 
 			Convey("Then it sees the objects created so far", func() {

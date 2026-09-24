@@ -9,25 +9,25 @@ import (
 	"github.com/kduong-dev/storage-service/internal/projection"
 )
 
-var _ ObjectStore = (*InMemoryObjectStore)(nil)
+var _ ObjectStore = (*EventSourcedObjectStore)(nil)
 
-type InMemoryObjectStore struct {
+type EventSourcedObjectStore struct {
 	projection      *projection.Projection
 	objects         []*Object
 	indexByUploadID map[string]int
 }
 
-type NewInMemoryObjectStoreInput struct {
+type NewEventSourcedObjectStoreInput struct {
 	Log eventsource.Log
 }
 
-func NewInMemoryObjectStore(input NewInMemoryObjectStoreInput) *InMemoryObjectStore {
-	store := &InMemoryObjectStore{indexByUploadID: make(map[string]int)}
+func NewEventSourcedObjectStore(input NewEventSourcedObjectStoreInput) *EventSourcedObjectStore {
+	store := &EventSourcedObjectStore{indexByUploadID: make(map[string]int)}
 	store.projection = projection.New(projection.NewInput{Log: input.Log, Apply: store.apply})
 	return store
 }
 
-func (store *InMemoryObjectStore) Initialise(ctx context.Context, object *Object) error {
+func (store *EventSourcedObjectStore) Initialise(ctx context.Context, object *Object) error {
 	store.projection.CatchUp(ctx)
 	if _, ok := store.find(object.ID); ok {
 		return ErrAlreadyExists
@@ -44,7 +44,7 @@ func (store *InMemoryObjectStore) Initialise(ctx context.Context, object *Object
 	})
 }
 
-func (store *InMemoryObjectStore) RecordPart(ctx context.Context, uploadID string, part Part, updatedAt string) error {
+func (store *EventSourcedObjectStore) RecordPart(ctx context.Context, uploadID string, part Part, updatedAt string) error {
 	if err := store.assertActive(ctx, uploadID); err != nil {
 		return err
 	}
@@ -60,7 +60,7 @@ func (store *InMemoryObjectStore) RecordPart(ctx context.Context, uploadID strin
 	})
 }
 
-func (store *InMemoryObjectStore) Complete(ctx context.Context, uploadID string, updatedAt string) error {
+func (store *EventSourcedObjectStore) Complete(ctx context.Context, uploadID string, updatedAt string) error {
 	if err := store.assertActive(ctx, uploadID); err != nil {
 		return err
 	}
@@ -70,7 +70,7 @@ func (store *InMemoryObjectStore) Complete(ctx context.Context, uploadID string,
 	})
 }
 
-func (store *InMemoryObjectStore) Abort(ctx context.Context, uploadID string, updatedAt string) error {
+func (store *EventSourcedObjectStore) Abort(ctx context.Context, uploadID string, updatedAt string) error {
 	if err := store.assertActive(ctx, uploadID); err != nil {
 		return err
 	}
@@ -80,7 +80,7 @@ func (store *InMemoryObjectStore) Abort(ctx context.Context, uploadID string, up
 	})
 }
 
-func (store *InMemoryObjectStore) Get(ctx context.Context, uploadID string) (*Object, error) {
+func (store *EventSourcedObjectStore) Get(ctx context.Context, uploadID string) (*Object, error) {
 	store.projection.CatchUp(ctx)
 	object, ok := store.find(uploadID)
 	if !ok {
@@ -91,7 +91,7 @@ func (store *InMemoryObjectStore) Get(ctx context.Context, uploadID string) (*Ob
 	return &copied, nil
 }
 
-func (store *InMemoryObjectStore) find(uploadID string) (*Object, bool) {
+func (store *EventSourcedObjectStore) find(uploadID string) (*Object, bool) {
 	index, ok := store.indexByUploadID[uploadID]
 	if !ok {
 		return nil, false
@@ -99,7 +99,7 @@ func (store *InMemoryObjectStore) find(uploadID string) (*Object, bool) {
 	return store.objects[index], true
 }
 
-func (store *InMemoryObjectStore) assertActive(ctx context.Context, uploadID string) error {
+func (store *EventSourcedObjectStore) assertActive(ctx context.Context, uploadID string) error {
 	store.projection.CatchUp(ctx)
 	object, ok := store.find(uploadID)
 	if !ok {
@@ -111,7 +111,7 @@ func (store *InMemoryObjectStore) assertActive(ctx context.Context, uploadID str
 	return nil
 }
 
-func (store *InMemoryObjectStore) apply(ctx context.Context, event *eventsource.Event) error {
+func (store *EventSourcedObjectStore) apply(ctx context.Context, event *eventsource.Event) error {
 	var frame EventFrame
 	fatal.UnlessUnmarshal(event.Data, &frame)
 	switch frame.Type {
@@ -127,7 +127,7 @@ func (store *InMemoryObjectStore) apply(ctx context.Context, event *eventsource.
 	return nil
 }
 
-func (store *InMemoryObjectStore) applyInitiated(event *UploadInitiatedEvent) {
+func (store *EventSourcedObjectStore) applyInitiated(event *UploadInitiatedEvent) {
 	store.indexByUploadID[event.UploadID] = len(store.objects)
 	store.objects = append(store.objects, &Object{
 		ID:          event.UploadID,
@@ -140,7 +140,7 @@ func (store *InMemoryObjectStore) applyInitiated(event *UploadInitiatedEvent) {
 	})
 }
 
-func (store *InMemoryObjectStore) applyPartUploaded(event *PartUploadedEvent) {
+func (store *EventSourcedObjectStore) applyPartUploaded(event *PartUploadedEvent) {
 	object, ok := store.find(event.UploadID)
 	if !ok {
 		return
@@ -156,7 +156,7 @@ func (store *InMemoryObjectStore) applyPartUploaded(event *PartUploadedEvent) {
 	object.Parts = append(object.Parts, part)
 }
 
-func (store *InMemoryObjectStore) applyStatus(event *UploadStatusEvent, status Status) {
+func (store *EventSourcedObjectStore) applyStatus(event *UploadStatusEvent, status Status) {
 	object, ok := store.find(event.UploadID)
 	if !ok {
 		return

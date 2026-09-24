@@ -12,10 +12,10 @@ import (
 )
 
 func TestObjectStoreThreadSafeDecorator(t *testing.T) {
-	Convey("Given an in-memory object store wrapped in the thread safe decorator", t, func() {
+	Convey("Given an event-sourced object store wrapped in the thread safe decorator", t, func() {
 		ctx := context.Background()
 		store := file.NewObjectStoreThreadSafeDecorator(file.NewObjectStoreThreadSafeDecoratorInput{
-			Decorated: file.NewInMemoryObjectStore(file.NewInMemoryObjectStoreInput{
+			Decorated: file.NewEventSourcedObjectStore(file.NewEventSourcedObjectStoreInput{
 				Log: eventsource.NewInMemoryLog("storage:files"),
 			}),
 		})

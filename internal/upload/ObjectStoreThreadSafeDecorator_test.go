@@ -14,7 +14,7 @@ func TestObjectStoreThreadSafeDecorator(t *testing.T) {
 	Convey("Given an initialised upload in a store wrapped in the thread safe decorator", t, func() {
 		ctx := context.Background()
 		store := upload.NewObjectStoreThreadSafeDecorator(upload.NewObjectStoreThreadSafeDecoratorInput{
-			Decorated: upload.NewInMemoryObjectStore(upload.NewInMemoryObjectStoreInput{
+			Decorated: upload.NewEventSourcedObjectStore(upload.NewEventSourcedObjectStoreInput{
 				Log: eventsource.NewInMemoryLog("storage:uploads"),
 			}),
 		})

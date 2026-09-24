@@ -24,10 +24,10 @@ func main() {
 	router := httpapi.NewRouter(httpapi.NewRouterInput{
 		APIKeyMiddleware: apikey.MiddlewareFromEnv(),
 		UploadObjectStore: upload.NewObjectStoreThreadSafeDecorator(upload.NewObjectStoreThreadSafeDecoratorInput{
-			Decorated: upload.NewInMemoryObjectStore(upload.NewInMemoryObjectStoreInput{Log: uploadLog}),
+			Decorated: upload.NewEventSourcedObjectStore(upload.NewEventSourcedObjectStoreInput{Log: uploadLog}),
 		}),
 		FileObjectStore: file.NewObjectStoreThreadSafeDecorator(file.NewObjectStoreThreadSafeDecoratorInput{
-			Decorated: file.NewInMemoryObjectStore(file.NewInMemoryObjectStoreInput{Log: fileLog}),
+			Decorated: file.NewEventSourcedObjectStore(file.NewEventSourcedObjectStoreInput{Log: fileLog}),
 		}),
 		Storage: storage.FromEnv(),
 	})

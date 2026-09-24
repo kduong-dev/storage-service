@@ -8,25 +8,25 @@ import (
 	"github.com/kduong-dev/storage-service/internal/projection"
 )
 
-var _ ObjectStore = (*InMemoryObjectStore)(nil)
+var _ ObjectStore = (*EventSourcedObjectStore)(nil)
 
-type InMemoryObjectStore struct {
+type EventSourcedObjectStore struct {
 	projection    *projection.Projection
 	objects       []*Object
 	indexByFileID map[string]int
 }
 
-type NewInMemoryObjectStoreInput struct {
+type NewEventSourcedObjectStoreInput struct {
 	Log eventsource.Log
 }
 
-func NewInMemoryObjectStore(input NewInMemoryObjectStoreInput) *InMemoryObjectStore {
-	store := &InMemoryObjectStore{indexByFileID: make(map[string]int)}
+func NewEventSourcedObjectStore(input NewEventSourcedObjectStoreInput) *EventSourcedObjectStore {
+	store := &EventSourcedObjectStore{indexByFileID: make(map[string]int)}
 	store.projection = projection.New(projection.NewInput{Log: input.Log, Apply: store.apply})
 	return store
 }
 
-func (store *InMemoryObjectStore) Put(ctx context.Context, object *Object) error {
+func (store *EventSourcedObjectStore) Put(ctx context.Context, object *Object) error {
 	store.projection.CatchUp(ctx)
 	if _, ok := store.indexByFileID[object.ID]; ok {
 		return ErrAlreadyExists
@@ -38,7 +38,7 @@ func (store *InMemoryObjectStore) Put(ctx context.Context, object *Object) error
 	})
 }
 
-func (store *InMemoryObjectStore) Get(ctx context.Context, fileID string) (*Object, error) {
+func (store *EventSourcedObjectStore) Get(ctx context.Context, fileID string) (*Object, error) {
 	store.projection.CatchUp(ctx)
 	index, ok := store.indexByFileID[fileID]
 	if !ok {
@@ -48,7 +48,7 @@ func (store *InMemoryObjectStore) Get(ctx context.Context, fileID string) (*Obje
 	return &copied, nil
 }
 
-func (store *InMemoryObjectStore) apply(ctx context.Context, event *eventsource.Event) error {
+func (store *EventSourcedObjectStore) apply(ctx context.Context, event *eventsource.Event) error {
 	var frame EventFrame
 	fatal.UnlessUnmarshal(event.Data, &frame)
 	if frame.Type == EventTypeFileCreated {
