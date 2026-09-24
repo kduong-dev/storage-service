@@ -1,10 +1,10 @@
 ---
-- name: Render storage-service
+- name: Render storage-service's api
   include_tasks: "{{ playbook_dir }}/tasks/render-service.yml"
   vars:
-    service_name: storage-service
+    service_name: api
     cmd_dir: cmd/server
-    env_dest: backend/storage-service/.env
+    env_dest: backend/api/.env
     resources:
       secrets: [storage_clients]
       logs:    [storage_event_log]
