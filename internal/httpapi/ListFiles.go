@@ -38,7 +38,7 @@ func (handler *Handler) ListFiles(responseWriter http.ResponseWriter, request *h
 		After:     query.Get("cursor"),
 		Limit:     limit,
 	})
-	if err = merrifyOrFatal(err); err != nil {
+	if err = merrifiedSentinels.MerrifyOrFatal(err); err != nil {
 		return
 	}
 	httpx.SendJSONResponse(responseWriter, http.StatusOK, storageservice.ListFilesResponse{

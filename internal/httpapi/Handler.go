@@ -49,11 +49,11 @@ func NewRouter(input NewRouterInput) *mux.Router {
 // existence isn't disclosed.
 func (handler *Handler) getUpload(ctx context.Context, uploadID string) (*storageservice.Upload, error) {
 	object, err := handler.uploadObjectStore.Get(ctx, uploadID)
-	if err = merrifyOrFatal(err); err != nil {
+	if err = merrifiedSentinels.MerrifyOrFatal(err); err != nil {
 		return nil, err
 	}
 	if !handler.isInNamespace(ctx, object.Key) {
-		return nil, merrify(upload.ErrNotFound)
+		return nil, merrifiedSentinels.Merrify(upload.ErrNotFound)
 	}
 	return object, nil
 }

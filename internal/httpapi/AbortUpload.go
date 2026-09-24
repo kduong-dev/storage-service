@@ -26,7 +26,7 @@ func (handler *Handler) AbortUpload(responseWriter http.ResponseWriter, request 
 		UploadID:  uploadID,
 		UpdatedAt: time.Now().UTC().Format(time.RFC3339),
 	})
-	if err = merrifyOrFatal(err); err != nil {
+	if err = merrifiedSentinels.MerrifyOrFatal(err); err != nil {
 		return
 	}
 	if err = handler.storage.AbortUpload(ctx, uploadID); err != nil {
