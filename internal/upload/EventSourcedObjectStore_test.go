@@ -45,7 +45,10 @@ func TestEventSourcedObjectStore(t *testing.T) {
 				_, err := store.Get(ctx, "upload-1")
 				So(err, ShouldEqual, upload.ErrNotFound)
 				So(recordPart(upload.Part{Number: 2}, "2026-01-01T00:00:04Z"), ShouldEqual, upload.ErrNotFound)
-				So(store.Abort(ctx, "upload-1", "2026-01-01T00:00:04Z"), ShouldEqual, upload.ErrNotFound)
+				So(store.Abort(ctx, upload.AbortInput{
+					UploadID:  "upload-1",
+					UpdatedAt: "2026-01-01T00:00:04Z",
+				}), ShouldEqual, upload.ErrNotFound)
 			})
 			Convey("Then a store rebuilt from the event log does not have it either", func() {
 				rebuilt := upload.NewEventSourcedObjectStore(upload.NewEventSourcedObjectStoreInput{Log: log})
@@ -54,7 +57,10 @@ func TestEventSourcedObjectStore(t *testing.T) {
 			})
 		})
 		Convey("When the upload is aborted", func() {
-			So(store.Abort(ctx, "upload-1", "2026-01-01T00:00:03Z"), ShouldBeNil)
+			So(store.Abort(ctx, upload.AbortInput{
+				UploadID:  "upload-1",
+				UpdatedAt: "2026-01-01T00:00:03Z",
+			}), ShouldBeNil)
 			Convey("Then it is aborted and accepts no more changes", func() {
 				fetched, err := store.Get(ctx, "upload-1")
 				So(err, ShouldBeNil)

@@ -99,13 +99,16 @@ func (store *EventSourcedObjectStore) Complete(ctx context.Context, input Comple
 	})
 }
 
-func (store *EventSourcedObjectStore) Abort(ctx context.Context, uploadID string, updatedAt string) error {
-	if err := store.assertActive(ctx, uploadID); err != nil {
+func (store *EventSourcedObjectStore) Abort(ctx context.Context, input AbortInput) error {
+	if err := store.assertActive(ctx, input.UploadID); err != nil {
 		return err
 	}
 	return store.append(EventFrame{
-		EventBase:          eventsource.NewEventBase(EventTypeUploadAborted),
-		UploadAbortedEvent: &UploadAbortedEvent{UploadID: uploadID, UpdatedAt: updatedAt},
+		EventBase: eventsource.NewEventBase(EventTypeUploadAborted),
+		UploadAbortedEvent: &UploadAbortedEvent{
+			UploadID:  input.UploadID,
+			UpdatedAt: input.UpdatedAt,
+		},
 	})
 }
 

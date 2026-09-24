@@ -38,10 +38,10 @@ func (decorator *ObjectStoreThreadSafeDecorator) Complete(ctx context.Context, i
 	return decorator.decorated.Complete(ctx, input)
 }
 
-func (decorator *ObjectStoreThreadSafeDecorator) Abort(ctx context.Context, uploadID string, updatedAt string) error {
+func (decorator *ObjectStoreThreadSafeDecorator) Abort(ctx context.Context, input AbortInput) error {
 	decorator.mutex.Lock()
 	defer decorator.mutex.Unlock()
-	return decorator.decorated.Abort(ctx, uploadID, updatedAt)
+	return decorator.decorated.Abort(ctx, input)
 }
 
 func (decorator *ObjectStoreThreadSafeDecorator) Get(ctx context.Context, uploadID string) (*Object, error) {

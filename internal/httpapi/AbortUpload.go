@@ -24,7 +24,10 @@ func (handler *Handler) AbortUpload(responseWriter http.ResponseWriter, request 
 	if _, err = handler.getUpload(ctx, uploadID); err != nil {
 		return
 	}
-	err = handler.uploadObjectStore.Abort(ctx, uploadID, time.Now().UTC().Format(time.RFC3339))
+	err = handler.uploadObjectStore.Abort(ctx, upload.AbortInput{
+		UploadID:  uploadID,
+		UpdatedAt: time.Now().UTC().Format(time.RFC3339),
+	})
 	if errors.Is(err, upload.ErrNotFound) {
 		err = merry.Wrap(err).WithHTTPCode(http.StatusNotFound).WithUserMessage("upload not found")
 		return

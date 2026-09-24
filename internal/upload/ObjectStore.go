@@ -6,7 +6,7 @@ type ObjectStore interface {
 	Initialise(ctx context.Context, object *Object) error
 	RecordPart(ctx context.Context, input RecordPartInput) error
 	Complete(ctx context.Context, input CompleteInput) error
-	Abort(ctx context.Context, uploadID string, updatedAt string) error
+	Abort(ctx context.Context, input AbortInput) error
 	Get(ctx context.Context, uploadID string) (*Object, error)
 }
 
@@ -21,5 +21,10 @@ type CompleteInput struct {
 	FileID    string
 	Size      int64
 	Checksum  string
+	UpdatedAt string
+}
+
+type AbortInput struct {
+	UploadID  string
 	UpdatedAt string
 }
