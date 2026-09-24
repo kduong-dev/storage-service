@@ -11,21 +11,21 @@ import (
 	"github.com/kduong-dev/storage-service/internal/file"
 	"github.com/kduong-dev/storage-service/internal/httpapi"
 	"github.com/kduong-dev/storage-service/internal/storage"
+	"github.com/kduong-dev/storage-service/internal/upload"
 )
 
 func main() {
 	logFactory, err := eventsource.LogFactoryFromEnv("STORAGE_EVENT_LOG", "INMEMORY")
 	fatal.OnError(err)
-	log, err := logFactory.Create("storage:events")
+	uploadLog, err := logFactory.Create("storage:uploads")
 	fatal.OnError(err)
-	fileInfoStore := file.NewInMemoryStore(file.NewInMemoryStoreInput{
-		Log:             log,
-		LegacyNamespace: config.EnvString("STORAGE_LEGACY_NAMESPACE", ""),
-	})
+	fileLog, err := logFactory.Create("storage:files")
+	fatal.OnError(err)
 	router := httpapi.NewRouter(httpapi.NewRouterInput{
-		APIKeyMiddleware: apikey.MiddlewareFromEnv(),
-		FileInfoStore:    fileInfoStore,
-		Storage:          storage.FromEnv(),
+		APIKeyMiddleware:  apikey.MiddlewareFromEnv(),
+		UploadObjectStore: upload.NewInMemoryObjectStore(upload.NewInMemoryObjectStoreInput{Log: uploadLog}),
+		FileObjectStore:   file.NewInMemoryObjectStore(file.NewInMemoryObjectStoreInput{Log: fileLog}),
+		Storage:           storage.FromEnv(),
 	})
 	address := ":" + config.EnvString("PORT", "8083")
 	logx.Noticef("storage-service listening on %s", address)

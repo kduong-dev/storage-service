@@ -1,0 +1,39 @@
+package upload
+
+import "github.com/kduong-dev/goutil/eventsource"
+
+const (
+	EventTypeUploadInitiated eventsource.EventType = "upload_initiated"
+	EventTypePartUploaded    eventsource.EventType = "part_uploaded"
+	EventTypeUploadCompleted eventsource.EventType = "upload_completed"
+	EventTypeUploadAborted   eventsource.EventType = "upload_aborted"
+)
+
+type EventFrame struct {
+	eventsource.EventBase
+	UploadInitiatedEvent *UploadInitiatedEvent `json:"upload_initiated_event,omitempty"`
+	PartUploadedEvent    *PartUploadedEvent    `json:"part_uploaded_event,omitempty"`
+	UploadCompletedEvent *UploadStatusEvent    `json:"upload_completed_event,omitempty"`
+	UploadAbortedEvent   *UploadStatusEvent    `json:"upload_aborted_event,omitempty"`
+}
+
+type UploadInitiatedEvent struct {
+	UploadID    string `json:"upload_id"`
+	Namespace   string `json:"namespace"`
+	Key         string `json:"key"`
+	ContentType string `json:"content_type"`
+	CreatedAt   string `json:"created_at"`
+}
+
+type PartUploadedEvent struct {
+	UploadID   string `json:"upload_id"`
+	PartNumber int    `json:"part_number"`
+	Size       int64  `json:"size"`
+	Checksum   string `json:"checksum"`
+	UpdatedAt  string `json:"updated_at"`
+}
+
+type UploadStatusEvent struct {
+	UploadID  string `json:"upload_id"`
+	UpdatedAt string `json:"updated_at"`
+}

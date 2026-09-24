@@ -56,7 +56,7 @@ func (handler *Handler) InitialiseUpload(responseWriter http.ResponseWriter, req
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
-	if err = handler.fileInfoStore.InitialiseUpload(ctx, object); err != nil {
+	if err = handler.uploadObjectStore.Initialise(ctx, object); err != nil {
 		err = merrifyError(err)
 		return
 	}

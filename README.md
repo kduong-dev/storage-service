@@ -26,8 +26,7 @@ Go callers use [`pkg/storageservice`](pkg/storageservice) — `storageservice.Up
 | `STORAGE_CLIENTS_B64_JSON` | required | base64 JSON `{"<namespace>": "<sha256 hex of api key>"}` |
 | `STORAGE_BACKEND` | `INMEMORY` | `INMEMORY` or `FILESYSTEM` |
 | `STORAGE_FILESYSTEM_DIRECTORY` | `./tmp/storage` | Root directory for the filesystem backend |
-| `STORAGE_EVENT_LOG_FACTORY` | `INMEMORY` | `INMEMORY` or `REDIS` (+ `STORAGE_EVENT_LOG_REDIS_ADDRESS`) |
-| `STORAGE_LEGACY_NAMESPACE` | empty | Namespace assigned to uploads recorded before namespaces existed |
+| `STORAGE_EVENT_LOG_FACTORY` | `INMEMORY` | `INMEMORY` or `REDIS` (+ `STORAGE_EVENT_LOG_REDIS_ADDRESS`); uploads and files use the `storage:uploads` and `storage:files` logs |
 | `PORT` | `8083` | Listen port |
 
 Client side (`storageservice.ClientFromEnv`): `STORAGE_SERVICE_CLIENT_IMPLEMENTATION=HTTP`, `STORAGE_SERVICE_URL`, `STORAGE_SERVICE_API_KEY`, optional `STORAGE_SERVICE_HTTP_CLIENT_TIMEOUT`.

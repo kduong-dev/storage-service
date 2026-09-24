@@ -19,17 +19,17 @@ func (handler *Handler) DownloadFile(responseWriter http.ResponseWriter, request
 	ctx := request.Context()
 	vars := mux.Vars(request)
 	fileID := vars["file_id"]
-	fileInfo, err := handler.getFileInfo(ctx, fileID)
+	fileObject, err := handler.getFile(ctx, fileID)
 	if err != nil {
 		return
 	}
-	readSeekCloser, err := handler.storage.OpenFile(fileInfo.Key)
+	readSeekCloser, err := handler.storage.OpenFile(fileObject.Key)
 	if err != nil {
 		return
 	}
 	defer readSeekCloser.Close()
-	filename := filepath.Base(fileInfo.Key)
-	responseWriter.Header().Set("Content-Type", fileInfo.ContentType)
+	filename := filepath.Base(fileObject.Key)
+	responseWriter.Header().Set("Content-Type", fileObject.ContentType)
 	responseWriter.Header().Set("Content-Disposition", `attachment; filename="`+filename+`"`)
 	http.ServeContent(responseWriter, request, filename, time.Time{}, readSeekCloser)
 }

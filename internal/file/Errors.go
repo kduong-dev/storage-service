@@ -3,7 +3,6 @@ package file
 import "errors"
 
 var (
-	ErrUploadNotFound  = errors.New("upload not found")
-	ErrFileNotFound    = errors.New("file not found")
-	ErrUploadNotActive = errors.New("upload is not in an active state")
+	ErrNotFound      = errors.New("file not found")
+	ErrAlreadyExists = errors.New("file already exists")
 )

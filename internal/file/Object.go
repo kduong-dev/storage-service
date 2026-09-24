@@ -1,6 +1,5 @@
 package file
 
-// Object describes a completed upload's stored file.
 type Object struct {
 	ID          string `json:"id"`
 	Namespace   string `json:"namespace"`

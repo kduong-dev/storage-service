@@ -9,26 +9,28 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/kduong-dev/storage-service/internal/apikey"
 	"github.com/kduong-dev/storage-service/internal/file"
-
 	"github.com/kduong-dev/storage-service/internal/storage"
 	"github.com/kduong-dev/storage-service/internal/upload"
 )
 
 type Handler struct {
-	fileInfoStore file.Store
-	storage       storage.Storage
+	uploadObjectStore upload.ObjectStore
+	fileObjectStore   file.ObjectStore
+	storage           storage.Storage
 }
 
 type NewRouterInput struct {
-	APIKeyMiddleware *apikey.Middleware
-	FileInfoStore    file.Store
-	Storage          storage.Storage
+	APIKeyMiddleware  *apikey.Middleware
+	UploadObjectStore upload.ObjectStore
+	FileObjectStore   file.ObjectStore
+	Storage           storage.Storage
 }
 
 func NewRouter(input NewRouterInput) *mux.Router {
 	handler := &Handler{
-		fileInfoStore: input.FileInfoStore,
-		storage:       input.Storage,
+		uploadObjectStore: input.UploadObjectStore,
+		fileObjectStore:   input.FileObjectStore,
+		storage:           input.Storage,
 	}
 	router := mux.NewRouter().StrictSlash(true)
 	publicRouter := router.PathPrefix("/storage/v1").Subrouter()
@@ -45,12 +47,12 @@ func NewRouter(input NewRouterInput) *mux.Router {
 // namespace; uploads in other namespaces are reported as not found so their
 // existence isn't disclosed.
 func (handler *Handler) getUpload(ctx context.Context, uploadID string) (*upload.Object, error) {
-	object, err := handler.fileInfoStore.GetUpload(ctx, uploadID)
+	object, err := handler.uploadObjectStore.Get(ctx, uploadID)
 	if err != nil {
 		return nil, merrifyError(err)
 	}
 	if object.Namespace != apikey.GetNamespace(ctx) {
-		return nil, merrifyError(file.ErrUploadNotFound)
+		return nil, merrifyError(upload.ErrNotFound)
 	}
 	return object, nil
 }
@@ -63,30 +65,29 @@ func (handler *Handler) getActiveUpload(ctx context.Context, uploadID string) (*
 		return nil, err
 	}
 	if object.Status != upload.StatusInitiated {
-		return nil, merrifyError(file.ErrUploadNotActive)
+		return nil, merrifyError(upload.ErrNotActive)
 	}
 	return object, nil
 }
 
-// getFileInfo returns the file info only when it belongs to the caller's namespace.
-func (handler *Handler) getFileInfo(ctx context.Context, fileID string) (*file.Object, error) {
-	fileInfo, err := handler.fileInfoStore.GetFileInfo(ctx, fileID)
+func (handler *Handler) getFile(ctx context.Context, fileID string) (*file.Object, error) {
+	object, err := handler.fileObjectStore.Get(ctx, fileID)
 	if err != nil {
 		return nil, merrifyError(err)
 	}
-	if fileInfo.Namespace != apikey.GetNamespace(ctx) {
-		return nil, merrifyError(file.ErrFileNotFound)
+	if object.Namespace != apikey.GetNamespace(ctx) {
+		return nil, merrifyError(file.ErrNotFound)
 	}
-	return fileInfo, nil
+	return object, nil
 }
 
 func merrifyError(err error) error {
 	switch {
-	case errors.Is(err, file.ErrUploadNotFound):
+	case errors.Is(err, upload.ErrNotFound):
 		return merry.Wrap(err).WithHTTPCode(http.StatusNotFound).WithUserMessage("upload not found")
-	case errors.Is(err, file.ErrFileNotFound):
+	case errors.Is(err, file.ErrNotFound):
 		return merry.Wrap(err).WithHTTPCode(http.StatusNotFound).WithUserMessage("file not found")
-	case errors.Is(err, file.ErrUploadNotActive):
+	case errors.Is(err, upload.ErrNotActive):
 		return merry.Wrap(err).WithHTTPCode(http.StatusConflict).WithUserMessage("upload is not active")
 	}
 	return err

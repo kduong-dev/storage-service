@@ -23,16 +23,16 @@ func (handler *Handler) CompleteUpload(responseWriter http.ResponseWriter, reque
 	ctx := request.Context()
 	vars := mux.Vars(request)
 	uploadID := vars["upload_id"]
-	upload, err := handler.getActiveUpload(ctx, uploadID)
+	uploadObject, err := handler.getActiveUpload(ctx, uploadID)
 	if err != nil {
 		return
 	}
-	if len(upload.Parts) == 0 {
+	if len(uploadObject.Parts) == 0 {
 		err = merry.New("no parts have been uploaded").WithHTTPCode(http.StatusBadRequest)
 		return
 	}
-	partNumbers := make([]int, len(upload.Parts))
-	for index, part := range upload.Parts {
+	partNumbers := make([]int, len(uploadObject.Parts))
+	for index, part := range uploadObject.Parts {
 		partNumbers[index] = part.Number
 	}
 	sort.Ints(partNumbers)
@@ -40,26 +40,30 @@ func (handler *Handler) CompleteUpload(responseWriter http.ResponseWriter, reque
 	output, err := handler.storage.CompleteUpload(ctx, storage.CompleteUploadInput{
 		UploadID:    uploadID,
 		FileID:      fileID,
-		Key:         upload.Key,
+		Key:         uploadObject.Key,
 		PartNumbers: partNumbers,
 	})
 	if err != nil {
 		return
 	}
-	err = handler.fileInfoStore.CompleteUpload(ctx, file.CompleteUploadInput{
-		UploadID:  uploadID,
-		FileID:    fileID,
-		Size:      output.Size,
-		Checksum:  output.Checksum,
-		UpdatedAt: time.Now().UTC().Format(time.RFC3339),
-	})
-	if err != nil {
+	now := time.Now().UTC().Format(time.RFC3339)
+	if err = handler.uploadObjectStore.Complete(ctx, uploadID, now); err != nil {
+		err = merrifyError(err)
+		return
+	}
+	fileObject := &file.Object{
+		ID:          fileID,
+		Namespace:   uploadObject.Namespace,
+		UploadID:    uploadID,
+		Key:         uploadObject.Key,
+		ContentType: uploadObject.ContentType,
+		Size:        output.Size,
+		Checksum:    output.Checksum,
+		CreatedAt:   now,
+	}
+	if err = handler.fileObjectStore.Create(ctx, fileObject); err != nil {
 		err = merry.Wrap(err)
 		return
 	}
-	fileInfo, err := handler.getFileInfo(ctx, fileID)
-	if err != nil {
-		return
-	}
-	httpx.SendJSONResponse(responseWriter, http.StatusCreated, fileInfo)
+	httpx.SendJSONResponse(responseWriter, http.StatusCreated, fileObject)
 }

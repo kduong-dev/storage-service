@@ -15,6 +15,7 @@ import (
 	"github.com/kduong-dev/storage-service/internal/file"
 	"github.com/kduong-dev/storage-service/internal/httpapi"
 	"github.com/kduong-dev/storage-service/internal/storage"
+	"github.com/kduong-dev/storage-service/internal/upload"
 	"github.com/kduong-dev/storage-service/pkg/storageservice"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -31,7 +32,6 @@ func newClient(server *httptest.Server, apiKey string) storageservice.Client {
 
 func TestRouter(t *testing.T) {
 	Convey("Given a storage service with alpha-service and beta-service clients", t, func() {
-		log := eventsource.NewInMemoryLog("storage:events")
 		router := httpapi.NewRouter(httpapi.NewRouterInput{
 			APIKeyMiddleware: apikey.NewMiddleware(apikey.NewMiddlewareInput{
 				NamespaceByKeyHash: map[string]string{
@@ -39,8 +39,13 @@ func TestRouter(t *testing.T) {
 					apikey.HashAPIKey("beta-key"):  "beta-service",
 				},
 			}),
-			FileInfoStore: file.NewInMemoryStore(file.NewInMemoryStoreInput{Log: log}),
-			Storage:       storage.NewFileSystemStorage(storage.NewFileSystemStorageInput{Root: t.TempDir()}),
+			UploadObjectStore: upload.NewInMemoryObjectStore(upload.NewInMemoryObjectStoreInput{
+				Log: eventsource.NewInMemoryLog("storage:uploads"),
+			}),
+			FileObjectStore: file.NewInMemoryObjectStore(file.NewInMemoryObjectStoreInput{
+				Log: eventsource.NewInMemoryLog("storage:files"),
+			}),
+			Storage: storage.NewFileSystemStorage(storage.NewFileSystemStorageInput{Root: t.TempDir()}),
 		})
 		server := httptest.NewServer(router)
 		defer server.Close()
@@ -79,39 +84,39 @@ func TestRouter(t *testing.T) {
 		})
 
 		Convey("When alpha-service starts an upload", func() {
-			upload, err := alphaClient.InitialiseUpload(ctx, "reports/job-2/report.html", "text/html")
+			startedUpload, err := alphaClient.InitialiseUpload(ctx, "reports/job-2/report.html", "text/html")
 			So(err, ShouldBeNil)
 
 			Convey("Then beta-service cannot add parts to it", func() {
-				_, err := betaClient.UploadPart(ctx, upload.ID, 1, strings.NewReader("intrusion"))
+				_, err := betaClient.UploadPart(ctx, startedUpload.ID, 1, strings.NewReader("intrusion"))
 				So(errors.Is(err, storageservice.ErrUploadNotFound), ShouldBeTrue)
 			})
 
 			Convey("Then beta-service cannot complete it", func() {
-				_, err := betaClient.CompleteUpload(ctx, upload.ID)
+				_, err := betaClient.CompleteUpload(ctx, startedUpload.ID)
 				So(errors.Is(err, storageservice.ErrUploadNotFound), ShouldBeTrue)
 			})
 
 			Convey("Then beta-service cannot abort it", func() {
-				err := betaClient.AbortUpload(ctx, upload.ID)
+				err := betaClient.AbortUpload(ctx, startedUpload.ID)
 				So(errors.Is(err, storageservice.ErrUploadNotFound), ShouldBeTrue)
 			})
 
 			Convey("And alpha-service aborts it", func() {
-				So(alphaClient.AbortUpload(ctx, upload.ID), ShouldBeNil)
+				So(alphaClient.AbortUpload(ctx, startedUpload.ID), ShouldBeNil)
 
 				Convey("Then no more parts can be added", func() {
-					_, err := alphaClient.UploadPart(ctx, upload.ID, 1, strings.NewReader("late part"))
+					_, err := alphaClient.UploadPart(ctx, startedUpload.ID, 1, strings.NewReader("late part"))
 					So(errors.Is(err, storageservice.ErrUploadNotActive), ShouldBeTrue)
 				})
 
 				Convey("Then it cannot be completed", func() {
-					_, err := alphaClient.CompleteUpload(ctx, upload.ID)
+					_, err := alphaClient.CompleteUpload(ctx, startedUpload.ID)
 					So(errors.Is(err, storageservice.ErrUploadNotActive), ShouldBeTrue)
 				})
 
 				Convey("Then it cannot be aborted again", func() {
-					err := alphaClient.AbortUpload(ctx, upload.ID)
+					err := alphaClient.AbortUpload(ctx, startedUpload.ID)
 					So(errors.Is(err, storageservice.ErrUploadNotActive), ShouldBeTrue)
 				})
 			})
