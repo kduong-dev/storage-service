@@ -9,4 +9,3 @@
       secrets: [storage_clients]
       logs:    [storage_event_log]
       storage: [filesystem]
-      config:  [storage_service]
