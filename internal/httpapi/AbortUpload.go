@@ -20,7 +20,7 @@ func (handler *Handler) AbortUpload(responseWriter http.ResponseWriter, request 
 	if _, err = handler.getActiveUpload(ctx, uploadID); err != nil {
 		return
 	}
-	if err = handler.commandHandler.AbortUpload(ctx, uploadID, time.Now().UTC().Format(time.RFC3339)); err != nil {
+	if err = handler.fileInfoStore.AbortUpload(ctx, uploadID, time.Now().UTC().Format(time.RFC3339)); err != nil {
 		err = merrifyError(err)
 		return
 	}

@@ -62,16 +62,21 @@ func (client *HTTPClient) CompleteUpload(ctx context.Context, uploadID string) (
 	return
 }
 
+func (client *HTTPClient) AbortUpload(ctx context.Context, uploadID string) error {
+	path := fmt.Sprintf("/storage/v1/uploads/%s/abort", url.PathEscape(uploadID))
+	request := client.newRequest(ctx, http.MethodPost, path, nil)
+	response, err := client.do(request, http.StatusNoContent)
+	if err != nil {
+		return err
+	}
+	return response.Body.Close()
+}
+
 func (client *HTTPClient) DownloadFile(ctx context.Context, fileID string) (output *DownloadFileResponse, err error) {
 	path := fmt.Sprintf("/storage/v1/files/%s", url.PathEscape(fileID))
 	request := client.newRequest(ctx, http.MethodGet, path, nil)
-	response, err := client.httpClient.Do(request)
+	response, err := client.do(request, http.StatusOK)
 	if err != nil {
-		return
-	}
-	if response.StatusCode != http.StatusOK {
-		defer response.Body.Close()
-		err = mapResponseError(response)
 		return
 	}
 	output = &DownloadFileResponse{
@@ -90,15 +95,26 @@ func (client *HTTPClient) newRequest(ctx context.Context, method string, path st
 	return request
 }
 
-func (client *HTTPClient) doJSON(request *http.Request, expectedStatusCode int, output any) error {
+// do sends the request and maps any unexpected status to an error. On
+// success the caller owns the response body.
+func (client *HTTPClient) do(request *http.Request, expectedStatusCode int) (*http.Response, error) {
 	response, err := client.httpClient.Do(request)
+	if err != nil {
+		return nil, err
+	}
+	if response.StatusCode != expectedStatusCode {
+		defer response.Body.Close()
+		return nil, mapResponseError(response)
+	}
+	return response, nil
+}
+
+func (client *HTTPClient) doJSON(request *http.Request, expectedStatusCode int, output any) error {
+	response, err := client.do(request, expectedStatusCode)
 	if err != nil {
 		return err
 	}
 	defer response.Body.Close()
-	if response.StatusCode != expectedStatusCode {
-		return mapResponseError(response)
-	}
 	return json.NewDecoder(response.Body).Decode(output)
 }
 

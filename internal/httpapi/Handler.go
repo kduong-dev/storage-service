@@ -15,23 +15,20 @@ import (
 )
 
 type Handler struct {
-	commandHandler fileinfostore.CommandHandler
-	queryHandler   fileinfostore.QueryHandler
-	storage        storage.Storage
+	fileInfoStore fileinfostore.Store
+	storage       storage.Storage
 }
 
 type NewRouterInput struct {
 	APIKeyMiddleware *apikey.Middleware
-	CommandHandler   fileinfostore.CommandHandler
-	QueryHandler     fileinfostore.QueryHandler
+	FileInfoStore    fileinfostore.Store
 	Storage          storage.Storage
 }
 
 func NewRouter(input NewRouterInput) *mux.Router {
 	handler := &Handler{
-		commandHandler: input.CommandHandler,
-		queryHandler:   input.QueryHandler,
-		storage:        input.Storage,
+		fileInfoStore: input.FileInfoStore,
+		storage:       input.Storage,
 	}
 	router := mux.NewRouter().StrictSlash(true)
 	publicRouter := router.PathPrefix("/storage/v1").Subrouter()
@@ -48,7 +45,7 @@ func NewRouter(input NewRouterInput) *mux.Router {
 // namespace; uploads in other namespaces are reported as not found so their
 // existence isn't disclosed.
 func (handler *Handler) getUpload(ctx context.Context, uploadID string) (*upload.Object, error) {
-	object, err := handler.queryHandler.GetUpload(ctx, uploadID)
+	object, err := handler.fileInfoStore.GetUpload(ctx, uploadID)
 	if err != nil {
 		return nil, merrifyError(err)
 	}
@@ -73,7 +70,7 @@ func (handler *Handler) getActiveUpload(ctx context.Context, uploadID string) (*
 
 // getFileInfo returns the file info only when it belongs to the caller's namespace.
 func (handler *Handler) getFileInfo(ctx context.Context, fileID string) (*fileinfo.FileInfo, error) {
-	fileInfo, err := handler.queryHandler.GetFileInfo(ctx, fileID)
+	fileInfo, err := handler.fileInfoStore.GetFileInfo(ctx, fileID)
 	if err != nil {
 		return nil, merrifyError(err)
 	}

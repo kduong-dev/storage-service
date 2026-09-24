@@ -46,7 +46,7 @@ func (handler *Handler) CompleteUpload(responseWriter http.ResponseWriter, reque
 	if err != nil {
 		return
 	}
-	err = handler.commandHandler.CompleteUpload(ctx, fileinfostore.CompleteUploadInput{
+	err = handler.fileInfoStore.CompleteUpload(ctx, fileinfostore.CompleteUploadInput{
 		UploadID:  uploadID,
 		FileID:    fileID,
 		Size:      output.Size,

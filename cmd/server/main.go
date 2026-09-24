@@ -18,27 +18,13 @@ func main() {
 	fatal.OnError(err)
 	log, err := logFactory.Create("storage:events")
 	fatal.OnError(err)
-	legacyNamespace := config.EnvString("STORAGE_LEGACY_NAMESPACE", "")
-	commandHandler := fileinfostore.NewCommandHandlerThreadSafeDecorator(
-		fileinfostore.NewCommandHandlerThreadSafeDecoratorInput{
-			Decorated: fileinfostore.NewEventSourcedCommandHandler(fileinfostore.NewEventSourcedCommandHandlerInput{
-				Log:             log,
-				LegacyNamespace: legacyNamespace,
-			}),
-		},
-	)
-	queryHandler := fileinfostore.NewQueryHandlerThreadSafeDecorator(
-		fileinfostore.NewQueryHandlerThreadSafeDecoratorInput{
-			Decorated: fileinfostore.NewEventSourcedQueryHandler(fileinfostore.NewEventSourcedQueryHandlerInput{
-				Log:             log,
-				LegacyNamespace: legacyNamespace,
-			}),
-		},
-	)
+	fileInfoStore := fileinfostore.NewInMemoryStore(fileinfostore.NewInMemoryStoreInput{
+		Log:             log,
+		LegacyNamespace: config.EnvString("STORAGE_LEGACY_NAMESPACE", ""),
+	})
 	router := httpapi.NewRouter(httpapi.NewRouterInput{
 		APIKeyMiddleware: apikey.MiddlewareFromEnv(),
-		CommandHandler:   commandHandler,
-		QueryHandler:     queryHandler,
+		FileInfoStore:    fileInfoStore,
 		Storage:          storage.FromEnv(),
 	})
 	address := ":" + config.EnvString("PORT", "8083")

@@ -87,6 +87,9 @@ type Client interface {
 	// CompleteUpload finalises an upload session and assembles all parts into a File.
 	CompleteUpload(ctx context.Context, uploadID string) (*File, error)
 
+	// AbortUpload cancels an upload session and discards its uploaded parts.
+	AbortUpload(ctx context.Context, uploadID string) error
+
 	// DownloadFile streams the assembled file for the given file ID.
 	// The caller is responsible for closing DownloadFileResponse.Body.
 	DownloadFile(ctx context.Context, fileID string) (*DownloadFileResponse, error)

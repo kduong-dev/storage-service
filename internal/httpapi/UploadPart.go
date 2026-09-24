@@ -56,7 +56,7 @@ func (handler *Handler) UploadPart(responseWriter http.ResponseWriter, request *
 	}
 	part := upload.Part{Number: partNumber, Size: output.Size, Checksum: output.Checksum}
 	now := time.Now().UTC().Format(time.RFC3339)
-	if err = handler.commandHandler.RecordPart(ctx, uploadID, part, now); err != nil {
+	if err = handler.fileInfoStore.RecordPart(ctx, uploadID, part, now); err != nil {
 		err = merry.Wrap(err)
 		return
 	}
