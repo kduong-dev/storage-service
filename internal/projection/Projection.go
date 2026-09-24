@@ -20,7 +20,10 @@ type NewInput struct {
 }
 
 func New(input NewInput) *Projection {
-	return &Projection{log: input.Log, apply: input.Apply}
+	return &Projection{
+		log:   input.Log,
+		apply: input.Apply,
+	}
 }
 
 func (projection *Projection) CatchUp(ctx context.Context) {
@@ -33,10 +36,8 @@ func (projection *Projection) CatchUp(ctx context.Context) {
 	fatal.OnError(err)
 }
 
-func (projection *Projection) AppendAndCatchUp(ctx context.Context, frame any) error {
-	if _, err := projection.log.Append(fatal.UnlessMarshal(frame)); err != nil {
-		return err
-	}
-	projection.CatchUp(ctx)
-	return nil
+func (projection *Projection) Append(ctx context.Context, frame any) (err error) {
+	data := fatal.UnlessMarshal(frame)
+	_, err = projection.log.Append(data)
+	return
 }

@@ -24,7 +24,7 @@ func TestInMemoryObjectStore(t *testing.T) {
 			Checksum:    "abc",
 			CreatedAt:   "2026-01-01T00:00:00Z",
 		}
-		So(store.Create(ctx, object), ShouldBeNil)
+		So(store.Put(ctx, object), ShouldBeNil)
 
 		Convey("When the object is fetched", func() {
 			fetched, err := store.Get(ctx, "file-1")
@@ -35,15 +35,15 @@ func TestInMemoryObjectStore(t *testing.T) {
 			})
 		})
 
-		Convey("When an object with the same ID is created again", func() {
-			err := store.Create(ctx, object)
+		Convey("When an object with the same ID is put again", func() {
+			err := store.Put(ctx, object)
 
 			Convey("Then it is rejected as already existing", func() {
 				So(err, ShouldEqual, file.ErrAlreadyExists)
 			})
 		})
 
-		Convey("When the caller modifies the created or fetched object", func() {
+		Convey("When the caller modifies the put or fetched object", func() {
 			object.Size = 999
 			fetched, err := store.Get(ctx, "file-1")
 			So(err, ShouldBeNil)

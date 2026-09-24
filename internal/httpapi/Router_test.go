@@ -39,11 +39,15 @@ func TestRouter(t *testing.T) {
 					apikey.HashAPIKey("beta-key"):  "beta-service",
 				},
 			}),
-			UploadObjectStore: upload.NewInMemoryObjectStore(upload.NewInMemoryObjectStoreInput{
-				Log: eventsource.NewInMemoryLog("storage:uploads"),
+			UploadObjectStore: upload.NewObjectStoreThreadSafeDecorator(upload.NewObjectStoreThreadSafeDecoratorInput{
+				Decorated: upload.NewInMemoryObjectStore(upload.NewInMemoryObjectStoreInput{
+					Log: eventsource.NewInMemoryLog("storage:uploads"),
+				}),
 			}),
-			FileObjectStore: file.NewInMemoryObjectStore(file.NewInMemoryObjectStoreInput{
-				Log: eventsource.NewInMemoryLog("storage:files"),
+			FileObjectStore: file.NewObjectStoreThreadSafeDecorator(file.NewObjectStoreThreadSafeDecoratorInput{
+				Decorated: file.NewInMemoryObjectStore(file.NewInMemoryObjectStoreInput{
+					Log: eventsource.NewInMemoryLog("storage:files"),
+				}),
 			}),
 			Storage: storage.NewFileSystemStorage(storage.NewFileSystemStorageInput{Root: t.TempDir()}),
 		})

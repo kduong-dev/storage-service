@@ -61,7 +61,7 @@ func (handler *Handler) CompleteUpload(responseWriter http.ResponseWriter, reque
 		Checksum:    output.Checksum,
 		CreatedAt:   now,
 	}
-	if err = handler.fileObjectStore.Create(ctx, fileObject); err != nil {
+	if err = handler.fileObjectStore.Put(ctx, fileObject); err != nil {
 		err = merry.Wrap(err)
 		return
 	}

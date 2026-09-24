@@ -3,7 +3,6 @@ package upload
 import (
 	"context"
 	"slices"
-	"sync"
 
 	"github.com/kduong-dev/goutil/eventsource"
 	"github.com/kduong-dev/goutil/fatal"
@@ -13,7 +12,6 @@ import (
 var _ ObjectStore = (*InMemoryObjectStore)(nil)
 
 type InMemoryObjectStore struct {
-	mutex           sync.Mutex
 	projection      *projection.Projection
 	objects         []*Object
 	indexByUploadID map[string]int
@@ -30,13 +28,11 @@ func NewInMemoryObjectStore(input NewInMemoryObjectStoreInput) *InMemoryObjectSt
 }
 
 func (store *InMemoryObjectStore) Initialise(ctx context.Context, object *Object) error {
-	store.mutex.Lock()
-	defer store.mutex.Unlock()
 	store.projection.CatchUp(ctx)
 	if _, ok := store.find(object.ID); ok {
 		return ErrAlreadyExists
 	}
-	return store.projection.AppendAndCatchUp(ctx, EventFrame{
+	return store.projection.Append(ctx, EventFrame{
 		EventBase: eventsource.NewEventBase(EventTypeUploadInitiated),
 		UploadInitiatedEvent: &UploadInitiatedEvent{
 			UploadID:    object.ID,
@@ -49,12 +45,10 @@ func (store *InMemoryObjectStore) Initialise(ctx context.Context, object *Object
 }
 
 func (store *InMemoryObjectStore) RecordPart(ctx context.Context, uploadID string, part Part, updatedAt string) error {
-	store.mutex.Lock()
-	defer store.mutex.Unlock()
 	if err := store.assertActive(ctx, uploadID); err != nil {
 		return err
 	}
-	return store.projection.AppendAndCatchUp(ctx, EventFrame{
+	return store.projection.Append(ctx, EventFrame{
 		EventBase: eventsource.NewEventBase(EventTypePartUploaded),
 		PartUploadedEvent: &PartUploadedEvent{
 			UploadID:   uploadID,
@@ -67,32 +61,26 @@ func (store *InMemoryObjectStore) RecordPart(ctx context.Context, uploadID strin
 }
 
 func (store *InMemoryObjectStore) Complete(ctx context.Context, uploadID string, updatedAt string) error {
-	store.mutex.Lock()
-	defer store.mutex.Unlock()
 	if err := store.assertActive(ctx, uploadID); err != nil {
 		return err
 	}
-	return store.projection.AppendAndCatchUp(ctx, EventFrame{
+	return store.projection.Append(ctx, EventFrame{
 		EventBase:            eventsource.NewEventBase(EventTypeUploadCompleted),
 		UploadCompletedEvent: &UploadStatusEvent{UploadID: uploadID, UpdatedAt: updatedAt},
 	})
 }
 
 func (store *InMemoryObjectStore) Abort(ctx context.Context, uploadID string, updatedAt string) error {
-	store.mutex.Lock()
-	defer store.mutex.Unlock()
 	if err := store.assertActive(ctx, uploadID); err != nil {
 		return err
 	}
-	return store.projection.AppendAndCatchUp(ctx, EventFrame{
+	return store.projection.Append(ctx, EventFrame{
 		EventBase:          eventsource.NewEventBase(EventTypeUploadAborted),
 		UploadAbortedEvent: &UploadStatusEvent{UploadID: uploadID, UpdatedAt: updatedAt},
 	})
 }
 
 func (store *InMemoryObjectStore) Get(ctx context.Context, uploadID string) (*Object, error) {
-	store.mutex.Lock()
-	defer store.mutex.Unlock()
 	store.projection.CatchUp(ctx)
 	object, ok := store.find(uploadID)
 	if !ok {

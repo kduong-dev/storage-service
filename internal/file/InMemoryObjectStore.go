@@ -2,7 +2,6 @@ package file
 
 import (
 	"context"
-	"sync"
 
 	"github.com/kduong-dev/goutil/eventsource"
 	"github.com/kduong-dev/goutil/fatal"
@@ -12,7 +11,6 @@ import (
 var _ ObjectStore = (*InMemoryObjectStore)(nil)
 
 type InMemoryObjectStore struct {
-	mutex         sync.Mutex
 	projection    *projection.Projection
 	objects       []*Object
 	indexByFileID map[string]int
@@ -28,23 +26,19 @@ func NewInMemoryObjectStore(input NewInMemoryObjectStoreInput) *InMemoryObjectSt
 	return store
 }
 
-func (store *InMemoryObjectStore) Create(ctx context.Context, object *Object) error {
-	store.mutex.Lock()
-	defer store.mutex.Unlock()
+func (store *InMemoryObjectStore) Put(ctx context.Context, object *Object) error {
 	store.projection.CatchUp(ctx)
 	if _, ok := store.indexByFileID[object.ID]; ok {
 		return ErrAlreadyExists
 	}
 	copied := *object
-	return store.projection.AppendAndCatchUp(ctx, EventFrame{
+	return store.projection.Append(ctx, EventFrame{
 		EventBase:        eventsource.NewEventBase(EventTypeFileCreated),
 		FileCreatedEvent: &copied,
 	})
 }
 
 func (store *InMemoryObjectStore) Get(ctx context.Context, fileID string) (*Object, error) {
-	store.mutex.Lock()
-	defer store.mutex.Unlock()
 	store.projection.CatchUp(ctx)
 	index, ok := store.indexByFileID[fileID]
 	if !ok {

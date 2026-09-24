@@ -1,0 +1,43 @@
+package upload_test
+
+import (
+	"context"
+	"sync"
+	"testing"
+
+	"github.com/kduong-dev/goutil/eventsource"
+	"github.com/kduong-dev/storage-service/internal/upload"
+	. "github.com/smartystreets/goconvey/convey"
+)
+
+func TestObjectStoreThreadSafeDecorator(t *testing.T) {
+	Convey("Given an initialised upload in a store wrapped in the thread safe decorator", t, func() {
+		ctx := context.Background()
+		store := upload.NewObjectStoreThreadSafeDecorator(upload.NewObjectStoreThreadSafeDecoratorInput{
+			Decorated: upload.NewInMemoryObjectStore(upload.NewInMemoryObjectStoreInput{
+				Log: eventsource.NewInMemoryLog("storage:uploads"),
+			}),
+		})
+		So(store.Initialise(ctx, &upload.Object{ID: "upload-1"}), ShouldBeNil)
+
+		Convey("When parts are recorded concurrently", func() {
+			var waitGroup sync.WaitGroup
+			errs := make([]error, 50)
+			for index := range errs {
+				waitGroup.Go(func() {
+					errs[index] = store.RecordPart(ctx, "upload-1", upload.Part{Number: index + 1}, "2026-01-01T00:00:01Z")
+				})
+			}
+			waitGroup.Wait()
+
+			Convey("Then every part is recorded", func() {
+				for _, err := range errs {
+					So(err, ShouldBeNil)
+				}
+				object, err := store.Get(ctx, "upload-1")
+				So(err, ShouldBeNil)
+				So(len(object.Parts), ShouldEqual, 50)
+			})
+		})
+	})
+}
