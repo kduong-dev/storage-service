@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/ansel1/merry"
@@ -43,7 +42,11 @@ func (client *HTTPClient) InitialiseUpload(ctx context.Context, input Initialise
 	requestBody := fatal.UnlessMarshal(input)
 	request := client.newRequest(ctx, http.MethodPost, "/storage/v1/uploads", bytes.NewReader(requestBody))
 	request.Header.Set("Content-Type", "application/json")
-	err = client.doJSON(request, http.StatusCreated, &output)
+	err = client.doJSON(doJSONInput{
+		Request:            request,
+		ExpectedStatusCode: http.StatusCreated,
+		Output:             &output,
+	})
 	return
 }
 
@@ -51,21 +54,31 @@ func (client *HTTPClient) UploadPart(ctx context.Context, input UploadPartInput)
 	path := fmt.Sprintf("/storage/v1/uploads/%s/parts/%d", url.PathEscape(input.UploadID), input.PartNumber)
 	request := client.newRequest(ctx, http.MethodPut, path, input.Body)
 	request.Header.Set("Content-Type", "application/octet-stream")
-	err = client.doJSON(request, http.StatusOK, &output)
+	err = client.doJSON(doJSONInput{
+		Request:            request,
+		ExpectedStatusCode: http.StatusOK,
+		NotFoundSentinel:   ErrUploadNotFound,
+		Output:             &output,
+	})
 	return
 }
 
 func (client *HTTPClient) CompleteUpload(ctx context.Context, input CompleteUploadInput) (output *File, err error) {
 	path := fmt.Sprintf("/storage/v1/uploads/%s/complete", url.PathEscape(input.UploadID))
 	request := client.newRequest(ctx, http.MethodPost, path, nil)
-	err = client.doJSON(request, http.StatusCreated, &output)
+	err = client.doJSON(doJSONInput{
+		Request:            request,
+		ExpectedStatusCode: http.StatusCreated,
+		NotFoundSentinel:   ErrUploadNotFound,
+		Output:             &output,
+	})
 	return
 }
 
 func (client *HTTPClient) AbortUpload(ctx context.Context, input AbortUploadInput) error {
 	path := fmt.Sprintf("/storage/v1/uploads/%s/abort", url.PathEscape(input.UploadID))
 	request := client.newRequest(ctx, http.MethodPost, path, nil)
-	response, err := client.do(request, http.StatusNoContent)
+	response, err := client.do(request, http.StatusNoContent, ErrUploadNotFound)
 	if err != nil {
 		return err
 	}
@@ -75,7 +88,7 @@ func (client *HTTPClient) AbortUpload(ctx context.Context, input AbortUploadInpu
 func (client *HTTPClient) DownloadFile(ctx context.Context, input DownloadFileInput) (output *DownloadFileResponse, err error) {
 	path := fmt.Sprintf("/storage/v1/files/%s", url.PathEscape(input.FileID))
 	request := client.newRequest(ctx, http.MethodGet, path, nil)
-	response, err := client.do(request, http.StatusOK)
+	response, err := client.do(request, http.StatusOK, ErrFileNotFound)
 	if err != nil {
 		return
 	}
@@ -100,7 +113,11 @@ func (client *HTTPClient) ListFiles(ctx context.Context, input ListFilesInput) (
 	}
 	request := client.newRequest(ctx, http.MethodGet, "/storage/v1/files", nil)
 	request.URL.RawQuery = query.Encode()
-	err = client.doJSON(request, http.StatusOK, &output)
+	err = client.doJSON(doJSONInput{
+		Request:            request,
+		ExpectedStatusCode: http.StatusOK,
+		Output:             &output,
+	})
 	return
 }
 
@@ -112,47 +129,57 @@ func (client *HTTPClient) newRequest(ctx context.Context, method string, path st
 	return request
 }
 
-// do sends the request and maps any unexpected status to an error. On
-// success the caller owns the response body.
-func (client *HTTPClient) do(request *http.Request, expectedStatusCode int) (*http.Response, error) {
+// do sends the request and maps any unexpected status to an error, using
+// notFoundSentinel for a 404. On success the caller owns the response body.
+func (client *HTTPClient) do(request *http.Request, expectedStatusCode int, notFoundSentinel error) (*http.Response, error) {
 	response, err := client.httpClient.Do(request)
 	if err != nil {
 		return nil, err
 	}
 	if response.StatusCode != expectedStatusCode {
 		defer response.Body.Close()
-		return nil, responseError(response)
+		return nil, responseError(response, notFoundSentinel)
 	}
 	return response, nil
 }
 
-func (client *HTTPClient) doJSON(request *http.Request, expectedStatusCode int, output any) error {
-	response, err := client.do(request, expectedStatusCode)
+type doJSONInput struct {
+	Request            *http.Request
+	ExpectedStatusCode int
+	// NotFoundSentinel is returned for a 404; nil when the route has no
+	// resource that can be missing.
+	NotFoundSentinel error
+	Output           any
+}
+
+func (client *HTTPClient) doJSON(input doJSONInput) error {
+	response, err := client.do(input.Request, input.ExpectedStatusCode, input.NotFoundSentinel)
 	if err != nil {
 		return err
 	}
 	defer response.Body.Close()
-	return json.NewDecoder(response.Body).Decode(output)
+	return json.NewDecoder(response.Body).Decode(input.Output)
+}
+
+var sentinelByStatusCode = map[int]error{
+	http.StatusBadRequest:            ErrBadRequest,
+	http.StatusRequestEntityTooLarge: ErrBadRequest,
+	http.StatusUnauthorized:          ErrUnauthorized,
 }
 
 // responseError tags the error httpx.ResponseError builds with the matching
 // sentinel, keeping its HTTP status code and the server's user message.
-func responseError(response *http.Response) error {
+func responseError(response *http.Response, notFoundSentinel error) error {
 	err := httpx.ResponseError(response)
 	if err == nil {
 		err = merry.Errorf("unexpected status code %d", response.StatusCode).WithHTTPCode(response.StatusCode)
 	}
-	switch response.StatusCode {
-	case http.StatusBadRequest, http.StatusRequestEntityTooLarge:
-		return merry.WithCause(err, ErrBadRequest)
-	case http.StatusUnauthorized:
-		return merry.WithCause(err, ErrUnauthorized)
-	case http.StatusNotFound:
-		if strings.Contains(response.Request.URL.Path, "/uploads/") {
-			return merry.WithCause(err, ErrUploadNotFound)
-		}
-		return merry.WithCause(err, ErrFileNotFound)
-	default:
-		return merry.WithCause(err, ErrServerError)
+	sentinel, ok := sentinelByStatusCode[response.StatusCode]
+	switch {
+	case response.StatusCode == http.StatusNotFound && notFoundSentinel != nil:
+		sentinel = notFoundSentinel
+	case !ok:
+		sentinel = ErrServerError
 	}
+	return merry.WithCause(err, sentinel)
 }
