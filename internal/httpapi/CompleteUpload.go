@@ -9,8 +9,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/kduong-dev/goutil/httpx"
-	"github.com/kduong-dev/goutil/logx"
-	"github.com/kduong-dev/storage-service/internal/filestore"
+	"github.com/kduong-dev/storage-service/internal/fileinfostore"
+	"github.com/kduong-dev/storage-service/internal/storage"
 )
 
 func (handler *Handler) CompleteUpload(responseWriter http.ResponseWriter, request *http.Request) {
@@ -21,8 +21,9 @@ func (handler *Handler) CompleteUpload(responseWriter http.ResponseWriter, reque
 		}
 	}()
 	ctx := request.Context()
-	uploadID := mux.Vars(request)["upload_id"]
-	upload, err := handler.getUpload(ctx, uploadID)
+	vars := mux.Vars(request)
+	uploadID := vars["upload_id"]
+	upload, err := handler.getActiveUpload(ctx, uploadID)
 	if err != nil {
 		return
 	}
@@ -36,28 +37,29 @@ func (handler *Handler) CompleteUpload(responseWriter http.ResponseWriter, reque
 	}
 	sort.Ints(partNumbers)
 	fileID := uuid.NewString()
-	size, checksum, err := handler.backend.Assemble(uploadID, fileID, upload.Key, partNumbers)
+	output, err := handler.storage.CompleteUpload(ctx, storage.CompleteUploadInput{
+		UploadID:    uploadID,
+		FileID:      fileID,
+		Key:         upload.Key,
+		PartNumbers: partNumbers,
+	})
 	if err != nil {
-		err = merry.Wrap(err).WithHTTPCode(http.StatusInternalServerError)
 		return
 	}
-	err = handler.commandHandler.CompleteUpload(ctx, filestore.CompleteUploadInput{
+	err = handler.commandHandler.CompleteUpload(ctx, fileinfostore.CompleteUploadInput{
 		UploadID:  uploadID,
 		FileID:    fileID,
-		Size:      size,
-		Checksum:  checksum,
+		Size:      output.Size,
+		Checksum:  output.Checksum,
 		UpdatedAt: time.Now().UTC().Format(time.RFC3339),
 	})
 	if err != nil {
-		err = merrifyError(err)
+		err = merry.Wrap(err)
 		return
 	}
-	if deleteErr := handler.backend.DeleteParts(uploadID); deleteErr != nil {
-		logx.Warnf("deleting parts of completed upload %s: %v", uploadID, deleteErr)
-	}
-	file, err := handler.getFile(ctx, fileID)
+	fileInfo, err := handler.getFileInfo(ctx, fileID)
 	if err != nil {
 		return
 	}
-	httpx.SendJSONResponse(responseWriter, http.StatusCreated, file)
+	httpx.SendJSONResponse(responseWriter, http.StatusCreated, fileInfo)
 }

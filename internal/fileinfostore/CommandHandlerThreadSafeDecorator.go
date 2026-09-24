@@ -1,8 +1,10 @@
-package filestore
+package fileinfostore
 
 import (
 	"context"
 	"sync"
+
+	"github.com/kduong-dev/storage-service/internal/upload"
 )
 
 var _ CommandHandler = (*CommandHandlerThreadSafeDecorator)(nil)
@@ -20,13 +22,13 @@ func NewCommandHandlerThreadSafeDecorator(input NewCommandHandlerThreadSafeDecor
 	return &CommandHandlerThreadSafeDecorator{decorated: input.Decorated}
 }
 
-func (decorator *CommandHandlerThreadSafeDecorator) InitialiseUpload(ctx context.Context, upload *Upload) error {
+func (decorator *CommandHandlerThreadSafeDecorator) InitialiseUpload(ctx context.Context, object *upload.Object) error {
 	decorator.mutex.Lock()
 	defer decorator.mutex.Unlock()
-	return decorator.decorated.InitialiseUpload(ctx, upload)
+	return decorator.decorated.InitialiseUpload(ctx, object)
 }
 
-func (decorator *CommandHandlerThreadSafeDecorator) RecordPart(ctx context.Context, uploadID string, part Part, updatedAt string) error {
+func (decorator *CommandHandlerThreadSafeDecorator) RecordPart(ctx context.Context, uploadID string, part upload.Part, updatedAt string) error {
 	decorator.mutex.Lock()
 	defer decorator.mutex.Unlock()
 	return decorator.decorated.RecordPart(ctx, uploadID, part, updatedAt)

@@ -9,7 +9,8 @@ import (
 	"github.com/ansel1/merry"
 	"github.com/gorilla/mux"
 	"github.com/kduong-dev/goutil/httpx"
-	"github.com/kduong-dev/storage-service/internal/filestore"
+	"github.com/kduong-dev/storage-service/internal/storage"
+	"github.com/kduong-dev/storage-service/internal/upload"
 )
 
 const maxPartSizeBytes = 5 * 1024 * 1024
@@ -35,11 +36,15 @@ func (handler *Handler) UploadPart(responseWriter http.ResponseWriter, request *
 		err = merry.New("part_number must be a positive integer").WithHTTPCode(http.StatusBadRequest)
 		return
 	}
-	if _, err = handler.getUpload(ctx, uploadID); err != nil {
+	if _, err = handler.getActiveUpload(ctx, uploadID); err != nil {
 		return
 	}
 	limitedBody := http.MaxBytesReader(responseWriter, request.Body, maxPartSizeBytes)
-	size, checksum, err := handler.backend.WritePart(uploadID, partNumber, limitedBody)
+	output, err := handler.storage.UploadPart(ctx, storage.UploadPartInput{
+		UploadID:   uploadID,
+		PartNumber: partNumber,
+		Reader:     limitedBody,
+	})
 	if err != nil {
 		var maxBytesError *http.MaxBytesError
 		if errors.As(err, &maxBytesError) {
@@ -49,15 +54,15 @@ func (handler *Handler) UploadPart(responseWriter http.ResponseWriter, request *
 		}
 		return
 	}
-	part := filestore.Part{Number: partNumber, Size: size, Checksum: checksum}
+	part := upload.Part{Number: partNumber, Size: output.Size, Checksum: output.Checksum}
 	now := time.Now().UTC().Format(time.RFC3339)
 	if err = handler.commandHandler.RecordPart(ctx, uploadID, part, now); err != nil {
-		err = merrifyError(err)
+		err = merry.Wrap(err)
 		return
 	}
 	httpx.SendJSONResponse(responseWriter, http.StatusOK, UploadPartResponse{
 		PartNumber: partNumber,
-		Size:       size,
-		Checksum:   checksum,
+		Size:       output.Size,
+		Checksum:   output.Checksum,
 	})
 }

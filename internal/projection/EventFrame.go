@@ -1,4 +1,4 @@
-package filestore
+package projection
 
 import "github.com/kduong-dev/goutil/eventsource"
 

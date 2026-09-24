@@ -5,6 +5,7 @@ package main
 
 import (
 	"crypto/rand"
+	"encoding/base64"
 	"encoding/hex"
 	"flag"
 	"fmt"
@@ -26,5 +27,11 @@ func main() {
 	fmt.Printf("api key (client):     %s\n", apiKey)
 	fmt.Printf("key hash (storage):   %s\n", keyHash)
 	fmt.Printf("clients entry (JSON): {%q: %q}\n", *namespace, keyHash)
-	fmt.Printf("single-client STORAGE_CLIENTS_B64_JSON: %s\n", apikey.EncodeClients(map[string]string{*namespace: keyHash}))
+	fmt.Printf("single-client STORAGE_CLIENTS_B64_JSON: %s\n", EncodeClients(map[string]string{*namespace: keyHash}))
+}
+
+// EncodeClients renders the STORAGE_CLIENTS_B64_JSON value for the given
+// namespace-to-key-hash map.
+func EncodeClients(keyHashByNamespace map[string]string) string {
+	return base64.StdEncoding.EncodeToString(fatal.UnlessMarshal(keyHashByNamespace))
 }

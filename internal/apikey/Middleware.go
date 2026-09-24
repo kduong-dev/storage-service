@@ -32,7 +32,9 @@ func NewMiddleware(input NewMiddlewareInput) *Middleware {
 		fatal.Unlessf(namespacePattern.MatchString(namespace), "invalid namespace %q: must match %s", namespace, namespacePattern)
 		fatal.Unlessf(len(keyHash) == sha256.Size*2, "invalid key hash for namespace %q: must be hex-encoded SHA-256", namespace)
 	}
-	return &Middleware{namespaceByKeyHash: input.NamespaceByKeyHash}
+	return &Middleware{
+		namespaceByKeyHash: input.NamespaceByKeyHash,
+	}
 }
 
 // MiddlewareFromEnv reads STORAGE_CLIENTS_B64_JSON: base64-encoded JSON
@@ -46,7 +48,13 @@ func MiddlewareFromEnv() *Middleware {
 	for namespace, keyHash := range keyHashByNamespace {
 		namespaceByKeyHash[strings.ToLower(keyHash)] = namespace
 	}
-	return NewMiddleware(NewMiddlewareInput{NamespaceByKeyHash: namespaceByKeyHash})
+	for keyHash, namespace := range namespaceByKeyHash {
+		fatal.Unlessf(namespacePattern.MatchString(namespace), "invalid namespace %q: must match %s", namespace, namespacePattern)
+		fatal.Unlessf(len(keyHash) == sha256.Size*2, "invalid key hash for namespace %q: must be hex-encoded SHA-256", namespace)
+	}
+	return NewMiddleware(NewMiddlewareInput{
+		NamespaceByKeyHash: namespaceByKeyHash,
+	})
 }
 
 func HashAPIKey(apiKey string) string {
@@ -62,23 +70,18 @@ func (middleware *Middleware) Handle(next http.Handler) http.Handler {
 				httpx.SendErrorResponse(responseWriter, err)
 			}
 		}()
-		apiKey, found := strings.CutPrefix(request.Header.Get("Authorization"), "Bearer ")
+		authorization := request.Header.Get("Authorization")
+		apiKey, found := strings.CutPrefix(authorization, "Bearer ")
 		if !found || apiKey == "" {
-			err = merry.Wrap(ErrMissingAPIKey).WithHTTPCode(http.StatusUnauthorized).WithUserMessage("unauthorized")
+			err = merry.New("missing api key").WithHTTPCode(http.StatusUnauthorized).WithUserMessage("unauthorized")
 			return
 		}
 		namespace, ok := middleware.namespaceByKeyHash[HashAPIKey(apiKey)]
 		if !ok {
-			err = merry.Wrap(ErrInvalidAPIKey).WithHTTPCode(http.StatusUnauthorized).WithUserMessage("unauthorized")
+			err = merry.New("invalid api key").WithHTTPCode(http.StatusUnauthorized).WithUserMessage("unauthorized")
 			return
 		}
 		ctx := WithNamespace(request.Context(), namespace)
 		next.ServeHTTP(responseWriter, request.WithContext(ctx))
 	})
-}
-
-// EncodeClients renders the STORAGE_CLIENTS_B64_JSON value for the given
-// namespace-to-key-hash map.
-func EncodeClients(keyHashByNamespace map[string]string) string {
-	return base64.StdEncoding.EncodeToString(fatal.UnlessMarshal(keyHashByNamespace))
 }

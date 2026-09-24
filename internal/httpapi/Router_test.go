@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
@@ -12,7 +13,7 @@ import (
 
 	"github.com/kduong-dev/goutil/eventsource"
 	"github.com/kduong-dev/storage-service/internal/apikey"
-	"github.com/kduong-dev/storage-service/internal/filestore"
+	"github.com/kduong-dev/storage-service/internal/fileinfostore"
 	"github.com/kduong-dev/storage-service/internal/httpapi"
 	"github.com/kduong-dev/storage-service/internal/storage"
 	"github.com/kduong-dev/storage-service/pkg/storageservice"
@@ -29,6 +30,16 @@ func newClient(server *httptest.Server, apiKey string) storageservice.Client {
 	})
 }
 
+func abortUpload(server *httptest.Server, apiKey string, uploadID string) int {
+	request, err := http.NewRequest(http.MethodPost, server.URL+"/storage/v1/uploads/"+uploadID+"/abort", nil)
+	So(err, ShouldBeNil)
+	request.Header.Set("Authorization", "Bearer "+apiKey)
+	response, err := http.DefaultClient.Do(request)
+	So(err, ShouldBeNil)
+	response.Body.Close()
+	return response.StatusCode
+}
+
 func TestRouter(t *testing.T) {
 	Convey("Given a storage service with trading-core and remarkable-shelf clients", t, func() {
 		log := eventsource.NewInMemoryLog("storage:events")
@@ -39,9 +50,9 @@ func TestRouter(t *testing.T) {
 					apikey.HashAPIKey("shelf-key"):   "remarkable-shelf",
 				},
 			}),
-			CommandHandler: filestore.NewEventSourcedCommandHandler(filestore.NewEventSourcedCommandHandlerInput{Log: log}),
-			QueryHandler:   filestore.NewEventSourcedQueryHandler(filestore.NewEventSourcedQueryHandlerInput{Log: log}),
-			Backend:        storage.NewInMemoryBackend(),
+			CommandHandler: fileinfostore.NewEventSourcedCommandHandler(fileinfostore.NewEventSourcedCommandHandlerInput{Log: log}),
+			QueryHandler:   fileinfostore.NewEventSourcedQueryHandler(fileinfostore.NewEventSourcedQueryHandlerInput{Log: log}),
+			Storage:        storage.NewFileSystemStorage(storage.NewFileSystemStorageInput{Root: t.TempDir()}),
 		})
 		server := httptest.NewServer(router)
 		defer server.Close()
@@ -91,6 +102,28 @@ func TestRouter(t *testing.T) {
 			Convey("Then remarkable-shelf cannot complete it", func() {
 				_, err := shelfClient.CompleteUpload(ctx, upload.ID)
 				So(errors.Is(err, storageservice.ErrUploadNotFound), ShouldBeTrue)
+			})
+
+			Convey("Then remarkable-shelf cannot abort it", func() {
+				So(abortUpload(server, "shelf-key", upload.ID), ShouldEqual, http.StatusNotFound)
+			})
+
+			Convey("And trading-core aborts it", func() {
+				So(abortUpload(server, "trading-key", upload.ID), ShouldEqual, http.StatusNoContent)
+
+				Convey("Then no more parts can be added", func() {
+					_, err := tradingClient.UploadPart(ctx, upload.ID, 1, strings.NewReader("late part"))
+					So(errors.Is(err, storageservice.ErrUploadNotActive), ShouldBeTrue)
+				})
+
+				Convey("Then it cannot be completed", func() {
+					_, err := tradingClient.CompleteUpload(ctx, upload.ID)
+					So(errors.Is(err, storageservice.ErrUploadNotActive), ShouldBeTrue)
+				})
+
+				Convey("Then it cannot be aborted again", func() {
+					So(abortUpload(server, "trading-key", upload.ID), ShouldEqual, http.StatusConflict)
+				})
 			})
 		})
 

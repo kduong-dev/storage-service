@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/kduong-dev/goutil/httpx"
 	"github.com/kduong-dev/storage-service/internal/apikey"
-	"github.com/kduong-dev/storage-service/internal/filestore"
+	"github.com/kduong-dev/storage-service/internal/upload"
 )
 
 type InitialiseUploadInput struct {
@@ -47,18 +47,21 @@ func (handler *Handler) InitialiseUpload(responseWriter http.ResponseWriter, req
 	}
 	namespace := apikey.GetNamespace(ctx)
 	now := time.Now().UTC().Format(time.RFC3339)
-	upload := &filestore.Upload{
+	object := &upload.Object{
 		ID:          uuid.NewString(),
 		Namespace:   namespace,
 		Key:         namespace + "/" + input.Key,
 		ContentType: input.ContentType,
-		Status:      filestore.UploadStatusInitiated,
+		Status:      upload.StatusInitiated,
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
-	if err = handler.commandHandler.InitialiseUpload(ctx, upload); err != nil {
+	if err = handler.commandHandler.InitialiseUpload(ctx, object); err != nil {
 		err = merrifyError(err)
 		return
 	}
-	httpx.SendJSONResponse(responseWriter, http.StatusCreated, upload)
+	if err = handler.storage.InitialiseUpload(ctx, object.ID); err != nil {
+		return
+	}
+	httpx.SendJSONResponse(responseWriter, http.StatusCreated, object)
 }
