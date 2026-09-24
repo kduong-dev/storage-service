@@ -53,7 +53,6 @@ func (handler *Handler) CompleteUpload(responseWriter http.ResponseWriter, reque
 	}
 	fileObject := &file.Object{
 		ID:          fileID,
-		Namespace:   uploadObject.Namespace,
 		UploadID:    uploadID,
 		Key:         uploadObject.Key,
 		ContentType: uploadObject.ContentType,

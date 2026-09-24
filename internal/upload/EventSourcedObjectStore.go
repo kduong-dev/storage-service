@@ -36,7 +36,6 @@ func (store *EventSourcedObjectStore) Initialise(ctx context.Context, object *Ob
 		EventBase: eventsource.NewEventBase(EventTypeUploadInitiated),
 		UploadInitiatedEvent: &UploadInitiatedEvent{
 			UploadID:    object.ID,
-			Namespace:   object.Namespace,
 			Key:         object.Key,
 			ContentType: object.ContentType,
 			CreatedAt:   object.CreatedAt,
@@ -131,7 +130,6 @@ func (store *EventSourcedObjectStore) applyInitiated(event *UploadInitiatedEvent
 	store.indexByUploadID[event.UploadID] = len(store.objects)
 	store.objects = append(store.objects, &Object{
 		ID:          event.UploadID,
-		Namespace:   event.Namespace,
 		Key:         event.Key,
 		ContentType: event.ContentType,
 		Status:      StatusInitiated,

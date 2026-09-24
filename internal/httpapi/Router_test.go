@@ -35,8 +35,9 @@ func TestRouter(t *testing.T) {
 		router := httpapi.NewRouter(httpapi.NewRouterInput{
 			APIKeyMiddleware: apikey.NewMiddleware(apikey.NewMiddlewareInput{
 				NamespaceByKeyHash: map[string]string{
-					apikey.HashAPIKey("alpha-key"): "alpha-service",
-					apikey.HashAPIKey("beta-key"):  "beta-service",
+					apikey.HashAPIKey("alpha-key"):  "alpha-service",
+					apikey.HashAPIKey("beta-key"):   "beta-service",
+					apikey.HashAPIKey("prefix-key"): "alpha",
 				},
 			}),
 			UploadObjectStore: upload.NewObjectStoreThreadSafeDecorator(upload.NewObjectStoreThreadSafeDecoratorInput{
@@ -64,7 +65,6 @@ func TestRouter(t *testing.T) {
 			})
 			So(err, ShouldBeNil)
 			Convey("Then the file is stored under the alpha-service namespace", func() {
-				So(uploadedFile.Namespace, ShouldEqual, "alpha-service")
 				So(uploadedFile.Key, ShouldEqual, "alpha-service/reports/job-1/report.html")
 				So(uploadedFile.Size, ShouldEqual, len("<h1>report</h1>"))
 			})
@@ -79,6 +79,10 @@ func TestRouter(t *testing.T) {
 			})
 			Convey("Then beta-service cannot see it", func() {
 				_, err := betaClient.DownloadFile(ctx, uploadedFile.ID)
+				So(errors.Is(err, storageservice.ErrFileNotFound), ShouldBeTrue)
+			})
+			Convey("Then a namespace that is a prefix of alpha-service cannot see it", func() {
+				_, err := newClient(server, "prefix-key").DownloadFile(ctx, uploadedFile.ID)
 				So(errors.Is(err, storageservice.ErrFileNotFound), ShouldBeTrue)
 			})
 		})

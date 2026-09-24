@@ -16,7 +16,6 @@ func TestEventSourcedObjectStore(t *testing.T) {
 		store := file.NewEventSourcedObjectStore(file.NewEventSourcedObjectStoreInput{Log: log})
 		object := &file.Object{
 			ID:          "file-1",
-			Namespace:   "alpha-service",
 			UploadID:    "upload-1",
 			Key:         "alpha-service/reports/report.html",
 			ContentType: "text/html",
@@ -42,12 +41,12 @@ func TestEventSourcedObjectStore(t *testing.T) {
 			object.Size = 999
 			fetched, err := store.Get(ctx, "file-1")
 			So(err, ShouldBeNil)
-			fetched.Namespace = "beta-service"
+			fetched.Key = "beta-service/reports/report.html"
 			Convey("Then the stored object is unaffected", func() {
 				stored, err := store.Get(ctx, "file-1")
 				So(err, ShouldBeNil)
 				So(stored.Size, ShouldEqual, 10)
-				So(stored.Namespace, ShouldEqual, "alpha-service")
+				So(stored.Key, ShouldEqual, "alpha-service/reports/report.html")
 			})
 		})
 		Convey("When another store is built from the same event log", func() {

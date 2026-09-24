@@ -45,12 +45,10 @@ func (handler *Handler) InitialiseUpload(responseWriter http.ResponseWriter, req
 	if err = input.Validate(); err != nil {
 		return
 	}
-	namespace := apikey.GetNamespace(ctx)
 	now := time.Now().UTC().Format(time.RFC3339)
 	object := &upload.Object{
 		ID:          uuid.NewString(),
-		Namespace:   namespace,
-		Key:         namespace + "/" + input.Key,
+		Key:         apikey.GetNamespace(ctx) + "/" + input.Key,
 		ContentType: input.ContentType,
 		Status:      upload.StatusInitiated,
 		CreatedAt:   now,

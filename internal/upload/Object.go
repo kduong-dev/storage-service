@@ -1,8 +1,15 @@
 package upload
 
+type Status string
+
+const (
+	StatusInitiated Status = "initiated"
+	StatusCompleted Status = "completed"
+	StatusAborted   Status = "aborted"
+)
+
 type Object struct {
 	ID          string `json:"id"`
-	Namespace   string `json:"namespace"`
 	Key         string `json:"key"`
 	ContentType string `json:"content_type"`
 	Status      Status `json:"status"`

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/ansel1/merry"
 	"github.com/gorilla/mux"
@@ -51,7 +52,7 @@ func (handler *Handler) getUpload(ctx context.Context, uploadID string) (*upload
 	if err != nil {
 		return nil, merrifyError(err)
 	}
-	if object.Namespace != apikey.GetNamespace(ctx) {
+	if !isInNamespace(ctx, object.Key) {
 		return nil, merrifyError(upload.ErrNotFound)
 	}
 	return object, nil
@@ -75,10 +76,16 @@ func (handler *Handler) getFile(ctx context.Context, fileID string) (*file.Objec
 	if err != nil {
 		return nil, merrifyError(err)
 	}
-	if object.Namespace != apikey.GetNamespace(ctx) {
+	if !isInNamespace(ctx, object.Key) {
 		return nil, merrifyError(file.ErrNotFound)
 	}
 	return object, nil
+}
+
+// isInNamespace reports whether the key sits under the caller's namespace.
+// The trailing slash stops namespace "alpha" from matching "alpha-service/".
+func isInNamespace(ctx context.Context, key string) bool {
+	return strings.HasPrefix(key, apikey.GetNamespace(ctx)+"/")
 }
 
 func merrifyError(err error) error {

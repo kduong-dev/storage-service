@@ -16,7 +16,6 @@ func TestEventSourcedObjectStore(t *testing.T) {
 		store := upload.NewEventSourcedObjectStore(upload.NewEventSourcedObjectStoreInput{Log: log})
 		object := &upload.Object{
 			ID:          "upload-1",
-			Namespace:   "alpha-service",
 			Key:         "alpha-service/reports/report.html",
 			ContentType: "text/html",
 			CreatedAt:   "2026-01-01T00:00:00Z",
@@ -75,7 +74,7 @@ func TestEventSourcedObjectStore(t *testing.T) {
 			fetched, err := rebuilt.Get(ctx, "upload-1")
 			Convey("Then it sees the uploads recorded so far", func() {
 				So(err, ShouldBeNil)
-				So(fetched.Namespace, ShouldEqual, "alpha-service")
+				So(fetched.Key, ShouldEqual, "alpha-service/reports/report.html")
 			})
 		})
 		Convey("When an unknown upload is changed", func() {

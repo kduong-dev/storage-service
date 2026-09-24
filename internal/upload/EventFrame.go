@@ -19,7 +19,6 @@ type EventFrame struct {
 
 type UploadInitiatedEvent struct {
 	UploadID    string `json:"upload_id"`
-	Namespace   string `json:"namespace"`
 	Key         string `json:"key"`
 	ContentType string `json:"content_type"`
 	CreatedAt   string `json:"created_at"`
