@@ -19,7 +19,6 @@ func TestObjectStoreThreadSafeDecorator(t *testing.T) {
 			}),
 		})
 		So(store.Initialise(ctx, &upload.Object{ID: "upload-1"}), ShouldBeNil)
-
 		Convey("When parts are recorded concurrently", func() {
 			var waitGroup sync.WaitGroup
 			errs := make([]error, 50)
@@ -29,7 +28,6 @@ func TestObjectStoreThreadSafeDecorator(t *testing.T) {
 				})
 			}
 			waitGroup.Wait()
-
 			Convey("Then every part is recorded", func() {
 				for _, err := range errs {
 					So(err, ShouldBeNil)

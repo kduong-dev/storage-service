@@ -80,7 +80,6 @@ func TestUploadFile(t *testing.T) {
 	Convey("Given a storage service client", t, func() {
 		client := &fakeClient{}
 		ctx := context.Background()
-
 		Convey("When uploading a file smaller than 5 MB", func() {
 			content := strings.Repeat("a", 1024)
 			input := storageservice.UploadFileInput{
@@ -88,9 +87,7 @@ func TestUploadFile(t *testing.T) {
 				ContentType: "text/plain",
 				Body:        strings.NewReader(content),
 			}
-
 			file, err := storageservice.UploadFile(ctx, client, input)
-
 			Convey("Then the upload succeeds as a single part", func() {
 				So(err, ShouldBeNil)
 				So(file, ShouldNotBeNil)
@@ -104,7 +101,6 @@ func TestUploadFile(t *testing.T) {
 				So(client.completedUploads[0], ShouldEqual, "upload-1")
 			})
 		})
-
 		Convey("When uploading a file that is exactly 5 MB", func() {
 			content := bytes.Repeat([]byte("b"), 5*1024*1024)
 			input := storageservice.UploadFileInput{
@@ -112,9 +108,7 @@ func TestUploadFile(t *testing.T) {
 				ContentType: "application/octet-stream",
 				Body:        bytes.NewReader(content),
 			}
-
 			file, err := storageservice.UploadFile(ctx, client, input)
-
 			Convey("Then the upload succeeds as a single part", func() {
 				So(err, ShouldBeNil)
 				So(file, ShouldNotBeNil)
@@ -123,7 +117,6 @@ func TestUploadFile(t *testing.T) {
 				So(len(client.uploadedParts[0].body), ShouldEqual, 5*1024*1024)
 			})
 		})
-
 		Convey("When uploading a file larger than 5 MB", func() {
 			firstPart := bytes.Repeat([]byte("c"), 5*1024*1024)
 			secondPart := bytes.Repeat([]byte("d"), 512*1024)
@@ -133,9 +126,7 @@ func TestUploadFile(t *testing.T) {
 				ContentType: "application/octet-stream",
 				Body:        bytes.NewReader(content),
 			}
-
 			file, err := storageservice.UploadFile(ctx, client, input)
-
 			Convey("Then the upload is split into multiple parts", func() {
 				So(err, ShouldBeNil)
 				So(file, ShouldNotBeNil)
@@ -147,7 +138,6 @@ func TestUploadFile(t *testing.T) {
 				So(len(client.completedUploads), ShouldEqual, 1)
 			})
 		})
-
 		Convey("When InitialiseUpload returns an error", func() {
 			client.initialiseUploadError = errors.New("service unavailable")
 			input := storageservice.UploadFileInput{
@@ -155,16 +145,13 @@ func TestUploadFile(t *testing.T) {
 				ContentType: "text/plain",
 				Body:        strings.NewReader("content"),
 			}
-
 			file, err := storageservice.UploadFile(ctx, client, input)
-
 			Convey("Then the error is returned and no parts are uploaded", func() {
 				So(err, ShouldNotBeNil)
 				So(file, ShouldBeNil)
 				So(len(client.uploadedParts), ShouldEqual, 0)
 			})
 		})
-
 		Convey("When UploadPart returns an error", func() {
 			client.uploadPartError = errors.New("write failed")
 			input := storageservice.UploadFileInput{
@@ -172,16 +159,13 @@ func TestUploadFile(t *testing.T) {
 				ContentType: "text/plain",
 				Body:        strings.NewReader("content"),
 			}
-
 			file, err := storageservice.UploadFile(ctx, client, input)
-
 			Convey("Then the error is returned and upload is not completed", func() {
 				So(err, ShouldNotBeNil)
 				So(file, ShouldBeNil)
 				So(len(client.completedUploads), ShouldEqual, 0)
 			})
 		})
-
 		Convey("When CompleteUpload returns an error", func() {
 			client.completeUploadError = errors.New("assembly failed")
 			input := storageservice.UploadFileInput{
@@ -189,9 +173,7 @@ func TestUploadFile(t *testing.T) {
 				ContentType: "text/plain",
 				Body:        strings.NewReader("content"),
 			}
-
 			file, err := storageservice.UploadFile(ctx, client, input)
-
 			Convey("Then the error is returned", func() {
 				So(err, ShouldNotBeNil)
 				So(file, ShouldBeNil)

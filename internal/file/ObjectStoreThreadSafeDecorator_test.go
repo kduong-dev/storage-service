@@ -19,7 +19,6 @@ func TestObjectStoreThreadSafeDecorator(t *testing.T) {
 				Log: eventsource.NewInMemoryLog("storage:files"),
 			}),
 		})
-
 		Convey("When objects are put and fetched concurrently", func() {
 			var waitGroup sync.WaitGroup
 			errs := make([]error, 50)
@@ -32,7 +31,6 @@ func TestObjectStoreThreadSafeDecorator(t *testing.T) {
 				})
 			}
 			waitGroup.Wait()
-
 			Convey("Then every object is stored and readable", func() {
 				for _, err := range errs {
 					So(err, ShouldBeNil)
