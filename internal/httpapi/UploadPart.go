@@ -8,6 +8,7 @@ import (
 
 	"github.com/ansel1/merry"
 	"github.com/gorilla/mux"
+	"github.com/kduong-dev/goutil/fatal"
 	"github.com/kduong-dev/goutil/httpx"
 	"github.com/kduong-dev/storage-service/internal/storage"
 	"github.com/kduong-dev/storage-service/internal/upload"
@@ -54,12 +55,20 @@ func (handler *Handler) UploadPart(responseWriter http.ResponseWriter, request *
 		}
 		return
 	}
-	part := upload.Part{Number: partNumber, Size: output.Size, Checksum: output.Checksum}
-	now := time.Now().UTC().Format(time.RFC3339)
-	if err = handler.uploadObjectStore.RecordPart(ctx, uploadID, part, now); err != nil {
-		err = merry.Wrap(err)
+	err = handler.uploadObjectStore.RecordPart(ctx, upload.RecordPartInput{
+		UploadID:  uploadID,
+		Part:      upload.Part{Number: partNumber, Size: output.Size, Checksum: output.Checksum},
+		UpdatedAt: time.Now().UTC().Format(time.RFC3339),
+	})
+	if errors.Is(err, upload.ErrNotFound) {
+		err = merry.Wrap(err).WithHTTPCode(http.StatusNotFound).WithUserMessage("upload not found")
 		return
 	}
+	if errors.Is(err, upload.ErrNotActive) {
+		err = merry.Wrap(err).WithHTTPCode(http.StatusConflict).WithUserMessage("upload is not active")
+		return
+	}
+	fatal.OnError(err)
 	httpx.SendJSONResponse(responseWriter, http.StatusOK, UploadPartResponse{
 		PartNumber: partNumber,
 		Size:       output.Size,

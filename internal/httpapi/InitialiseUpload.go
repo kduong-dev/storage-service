@@ -8,6 +8,7 @@ import (
 
 	"github.com/ansel1/merry"
 	"github.com/google/uuid"
+	"github.com/kduong-dev/goutil/fatal"
 	"github.com/kduong-dev/goutil/httpx"
 	"github.com/kduong-dev/storage-service/internal/apikey"
 	"github.com/kduong-dev/storage-service/internal/upload"
@@ -45,21 +46,20 @@ func (handler *Handler) InitialiseUpload(responseWriter http.ResponseWriter, req
 	if err = input.Validate(); err != nil {
 		return
 	}
+	uploadID := uuid.NewString()
+	err = handler.storage.InitialiseUpload(ctx, uploadID)
+	if err != nil {
+		return
+	}
 	now := time.Now().UTC().Format(time.RFC3339)
 	object := &upload.Object{
-		ID:          uuid.NewString(),
+		ID:          uploadID,
 		Key:         apikey.GetNamespace(ctx) + "/" + input.Key,
 		ContentType: input.ContentType,
 		Status:      upload.StatusInitiated,
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
-	if err = handler.uploadObjectStore.Initialise(ctx, object); err != nil {
-		err = merrifyError(err)
-		return
-	}
-	if err = handler.storage.InitialiseUpload(ctx, object.ID); err != nil {
-		return
-	}
+	fatal.OnError(handler.uploadObjectStore.Initialise(ctx, object))
 	httpx.SendJSONResponse(responseWriter, http.StatusCreated, object)
 }

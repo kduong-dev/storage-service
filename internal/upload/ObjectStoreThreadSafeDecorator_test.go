@@ -24,7 +24,11 @@ func TestObjectStoreThreadSafeDecorator(t *testing.T) {
 			errs := make([]error, 50)
 			for index := range errs {
 				waitGroup.Go(func() {
-					errs[index] = store.RecordPart(ctx, "upload-1", upload.Part{Number: index + 1}, "2026-01-01T00:00:01Z")
+					errs[index] = store.RecordPart(ctx, upload.RecordPartInput{
+						UploadID:  "upload-1",
+						Part:      upload.Part{Number: index + 1},
+						UpdatedAt: "2026-01-01T00:00:01Z",
+					})
 				})
 			}
 			waitGroup.Wait()

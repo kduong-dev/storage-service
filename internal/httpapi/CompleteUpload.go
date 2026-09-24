@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"errors"
 	"net/http"
 	"sort"
 	"time"
@@ -8,9 +9,11 @@ import (
 	"github.com/ansel1/merry"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/kduong-dev/goutil/fatal"
 	"github.com/kduong-dev/goutil/httpx"
 	"github.com/kduong-dev/storage-service/internal/file"
 	"github.com/kduong-dev/storage-service/internal/storage"
+	"github.com/kduong-dev/storage-service/internal/upload"
 )
 
 func (handler *Handler) CompleteUpload(responseWriter http.ResponseWriter, request *http.Request) {
@@ -47,10 +50,22 @@ func (handler *Handler) CompleteUpload(responseWriter http.ResponseWriter, reque
 		return
 	}
 	now := time.Now().UTC().Format(time.RFC3339)
-	if err = handler.uploadObjectStore.Complete(ctx, uploadID, now); err != nil {
-		err = merrifyError(err)
+	err = handler.uploadObjectStore.Complete(ctx, upload.CompleteInput{
+		UploadID:  uploadID,
+		FileID:    fileID,
+		Size:      output.Size,
+		Checksum:  output.Checksum,
+		UpdatedAt: now,
+	})
+	if errors.Is(err, upload.ErrNotFound) {
+		err = merry.Wrap(err).WithHTTPCode(http.StatusNotFound).WithUserMessage("upload not found")
 		return
 	}
+	if errors.Is(err, upload.ErrNotActive) {
+		err = merry.Wrap(err).WithHTTPCode(http.StatusConflict).WithUserMessage("upload is not active")
+		return
+	}
+	fatal.OnError(err)
 	fileObject := &file.Object{
 		ID:          fileID,
 		UploadID:    uploadID,
@@ -60,9 +75,6 @@ func (handler *Handler) CompleteUpload(responseWriter http.ResponseWriter, reque
 		Checksum:    output.Checksum,
 		CreatedAt:   now,
 	}
-	if err = handler.fileObjectStore.Put(ctx, fileObject); err != nil {
-		err = merry.Wrap(err)
-		return
-	}
+	fatal.OnError(handler.fileObjectStore.Put(ctx, fileObject))
 	httpx.SendJSONResponse(responseWriter, http.StatusCreated, fileObject)
 }

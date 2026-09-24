@@ -26,16 +26,16 @@ func (decorator *ObjectStoreThreadSafeDecorator) Initialise(ctx context.Context,
 	return decorator.decorated.Initialise(ctx, object)
 }
 
-func (decorator *ObjectStoreThreadSafeDecorator) RecordPart(ctx context.Context, uploadID string, part Part, updatedAt string) error {
+func (decorator *ObjectStoreThreadSafeDecorator) RecordPart(ctx context.Context, input RecordPartInput) error {
 	decorator.mutex.Lock()
 	defer decorator.mutex.Unlock()
-	return decorator.decorated.RecordPart(ctx, uploadID, part, updatedAt)
+	return decorator.decorated.RecordPart(ctx, input)
 }
 
-func (decorator *ObjectStoreThreadSafeDecorator) Complete(ctx context.Context, uploadID string, updatedAt string) error {
+func (decorator *ObjectStoreThreadSafeDecorator) Complete(ctx context.Context, input CompleteInput) error {
 	decorator.mutex.Lock()
 	defer decorator.mutex.Unlock()
-	return decorator.decorated.Complete(ctx, uploadID, updatedAt)
+	return decorator.decorated.Complete(ctx, input)
 }
 
 func (decorator *ObjectStoreThreadSafeDecorator) Abort(ctx context.Context, uploadID string, updatedAt string) error {

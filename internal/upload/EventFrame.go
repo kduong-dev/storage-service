@@ -13,8 +13,8 @@ type EventFrame struct {
 	eventsource.EventBase
 	UploadInitiatedEvent *UploadInitiatedEvent `json:"upload_initiated_event,omitempty"`
 	PartUploadedEvent    *PartUploadedEvent    `json:"part_uploaded_event,omitempty"`
-	UploadCompletedEvent *UploadStatusEvent    `json:"upload_completed_event,omitempty"`
-	UploadAbortedEvent   *UploadStatusEvent    `json:"upload_aborted_event,omitempty"`
+	UploadCompletedEvent *UploadCompletedEvent `json:"upload_completed_event,omitempty"`
+	UploadAbortedEvent   *UploadAbortedEvent   `json:"upload_aborted_event,omitempty"`
 }
 
 type UploadInitiatedEvent struct {
@@ -32,7 +32,15 @@ type PartUploadedEvent struct {
 	UpdatedAt  string `json:"updated_at"`
 }
 
-type UploadStatusEvent struct {
+type UploadCompletedEvent struct {
+	UploadID  string `json:"upload_id"`
+	FileID    string `json:"file_id"`
+	Size      int64  `json:"size"`
+	Checksum  string `json:"checksum"`
+	UpdatedAt string `json:"updated_at"`
+}
+
+type UploadAbortedEvent struct {
 	UploadID  string `json:"upload_id"`
 	UpdatedAt string `json:"updated_at"`
 }

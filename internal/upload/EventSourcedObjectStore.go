@@ -5,16 +5,16 @@ import (
 	"slices"
 
 	"github.com/kduong-dev/goutil/eventsource"
+	"github.com/kduong-dev/goutil/eventsource/subscription"
 	"github.com/kduong-dev/goutil/fatal"
-	"github.com/kduong-dev/storage-service/internal/projection"
 )
 
 var _ ObjectStore = (*EventSourcedObjectStore)(nil)
 
 type EventSourcedObjectStore struct {
-	projection      *projection.Projection
-	objects         []*Object
-	indexByUploadID map[string]int
+	log              eventsource.Log
+	cursor           int64
+	objectByUploadID map[string]*Object
 }
 
 type NewEventSourcedObjectStoreInput struct {
@@ -22,17 +22,41 @@ type NewEventSourcedObjectStoreInput struct {
 }
 
 func NewEventSourcedObjectStore(input NewEventSourcedObjectStoreInput) *EventSourcedObjectStore {
-	store := &EventSourcedObjectStore{indexByUploadID: make(map[string]int)}
-	store.projection = projection.New(projection.NewInput{Log: input.Log, Apply: store.apply})
-	return store
+	return &EventSourcedObjectStore{
+		log:              input.Log,
+		objectByUploadID: make(map[string]*Object),
+	}
+}
+
+func (store *EventSourcedObjectStore) catchUp(ctx context.Context) {
+	var err error
+	store.cursor, err = subscription.CatchUp(ctx, subscription.Input{
+		Log:    store.log,
+		Cursor: store.cursor,
+		Apply:  store.apply,
+	})
+	fatal.OnError(err)
+}
+
+func (store *EventSourcedObjectStore) assertActive(ctx context.Context, uploadID string) error {
+	store.catchUp(ctx)
+	object, ok := store.objectByUploadID[uploadID]
+	if !ok {
+		return ErrNotFound
+	}
+	if object.Status != StatusInitiated {
+		return ErrNotActive
+	}
+	return nil
+}
+
+func (store *EventSourcedObjectStore) append(frame EventFrame) error {
+	_, err := store.log.Append(fatal.UnlessMarshal(frame))
+	return err
 }
 
 func (store *EventSourcedObjectStore) Initialise(ctx context.Context, object *Object) error {
-	store.projection.CatchUp(ctx)
-	if _, ok := store.find(object.ID); ok {
-		return ErrAlreadyExists
-	}
-	return store.projection.Append(ctx, EventFrame{
+	return store.append(EventFrame{
 		EventBase: eventsource.NewEventBase(EventTypeUploadInitiated),
 		UploadInitiatedEvent: &UploadInitiatedEvent{
 			UploadID:    object.ID,
@@ -43,29 +67,35 @@ func (store *EventSourcedObjectStore) Initialise(ctx context.Context, object *Ob
 	})
 }
 
-func (store *EventSourcedObjectStore) RecordPart(ctx context.Context, uploadID string, part Part, updatedAt string) error {
-	if err := store.assertActive(ctx, uploadID); err != nil {
+func (store *EventSourcedObjectStore) RecordPart(ctx context.Context, input RecordPartInput) error {
+	if err := store.assertActive(ctx, input.UploadID); err != nil {
 		return err
 	}
-	return store.projection.Append(ctx, EventFrame{
+	return store.append(EventFrame{
 		EventBase: eventsource.NewEventBase(EventTypePartUploaded),
 		PartUploadedEvent: &PartUploadedEvent{
-			UploadID:   uploadID,
-			PartNumber: part.Number,
-			Size:       part.Size,
-			Checksum:   part.Checksum,
-			UpdatedAt:  updatedAt,
+			UploadID:   input.UploadID,
+			PartNumber: input.Part.Number,
+			Size:       input.Part.Size,
+			Checksum:   input.Part.Checksum,
+			UpdatedAt:  input.UpdatedAt,
 		},
 	})
 }
 
-func (store *EventSourcedObjectStore) Complete(ctx context.Context, uploadID string, updatedAt string) error {
-	if err := store.assertActive(ctx, uploadID); err != nil {
+func (store *EventSourcedObjectStore) Complete(ctx context.Context, input CompleteInput) error {
+	if err := store.assertActive(ctx, input.UploadID); err != nil {
 		return err
 	}
-	return store.projection.Append(ctx, EventFrame{
-		EventBase:            eventsource.NewEventBase(EventTypeUploadCompleted),
-		UploadCompletedEvent: &UploadStatusEvent{UploadID: uploadID, UpdatedAt: updatedAt},
+	return store.append(EventFrame{
+		EventBase: eventsource.NewEventBase(EventTypeUploadCompleted),
+		UploadCompletedEvent: &UploadCompletedEvent{
+			UploadID:  input.UploadID,
+			FileID:    input.FileID,
+			Size:      input.Size,
+			Checksum:  input.Checksum,
+			UpdatedAt: input.UpdatedAt,
+		},
 	})
 }
 
@@ -73,41 +103,21 @@ func (store *EventSourcedObjectStore) Abort(ctx context.Context, uploadID string
 	if err := store.assertActive(ctx, uploadID); err != nil {
 		return err
 	}
-	return store.projection.Append(ctx, EventFrame{
+	return store.append(EventFrame{
 		EventBase:          eventsource.NewEventBase(EventTypeUploadAborted),
-		UploadAbortedEvent: &UploadStatusEvent{UploadID: uploadID, UpdatedAt: updatedAt},
+		UploadAbortedEvent: &UploadAbortedEvent{UploadID: uploadID, UpdatedAt: updatedAt},
 	})
 }
 
 func (store *EventSourcedObjectStore) Get(ctx context.Context, uploadID string) (*Object, error) {
-	store.projection.CatchUp(ctx)
-	object, ok := store.find(uploadID)
+	store.catchUp(ctx)
+	object, ok := store.objectByUploadID[uploadID]
 	if !ok {
 		return nil, ErrNotFound
 	}
 	copied := *object
 	copied.Parts = slices.Clone(object.Parts)
 	return &copied, nil
-}
-
-func (store *EventSourcedObjectStore) find(uploadID string) (*Object, bool) {
-	index, ok := store.indexByUploadID[uploadID]
-	if !ok {
-		return nil, false
-	}
-	return store.objects[index], true
-}
-
-func (store *EventSourcedObjectStore) assertActive(ctx context.Context, uploadID string) error {
-	store.projection.CatchUp(ctx)
-	object, ok := store.find(uploadID)
-	if !ok {
-		return ErrNotFound
-	}
-	if object.Status != StatusInitiated {
-		return ErrNotActive
-	}
-	return nil
 }
 
 func (store *EventSourcedObjectStore) apply(ctx context.Context, event *eventsource.Event) error {
@@ -119,27 +129,26 @@ func (store *EventSourcedObjectStore) apply(ctx context.Context, event *eventsou
 	case EventTypePartUploaded:
 		store.applyPartUploaded(frame.PartUploadedEvent)
 	case EventTypeUploadCompleted:
-		store.applyStatus(frame.UploadCompletedEvent, StatusCompleted)
+		delete(store.objectByUploadID, frame.UploadCompletedEvent.UploadID)
 	case EventTypeUploadAborted:
-		store.applyStatus(frame.UploadAbortedEvent, StatusAborted)
+		store.applyAborted(frame.UploadAbortedEvent)
 	}
 	return nil
 }
 
 func (store *EventSourcedObjectStore) applyInitiated(event *UploadInitiatedEvent) {
-	store.indexByUploadID[event.UploadID] = len(store.objects)
-	store.objects = append(store.objects, &Object{
+	store.objectByUploadID[event.UploadID] = &Object{
 		ID:          event.UploadID,
 		Key:         event.Key,
 		ContentType: event.ContentType,
 		Status:      StatusInitiated,
 		CreatedAt:   event.CreatedAt,
 		UpdatedAt:   event.CreatedAt,
-	})
+	}
 }
 
 func (store *EventSourcedObjectStore) applyPartUploaded(event *PartUploadedEvent) {
-	object, ok := store.find(event.UploadID)
+	object, ok := store.objectByUploadID[event.UploadID]
 	if !ok {
 		return
 	}
@@ -154,11 +163,11 @@ func (store *EventSourcedObjectStore) applyPartUploaded(event *PartUploadedEvent
 	object.Parts = append(object.Parts, part)
 }
 
-func (store *EventSourcedObjectStore) applyStatus(event *UploadStatusEvent, status Status) {
-	object, ok := store.find(event.UploadID)
+func (store *EventSourcedObjectStore) applyAborted(event *UploadAbortedEvent) {
+	object, ok := store.objectByUploadID[event.UploadID]
 	if !ok {
 		return
 	}
-	object.Status = status
+	object.Status = StatusAborted
 	object.UpdatedAt = event.UpdatedAt
 }

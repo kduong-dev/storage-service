@@ -8,6 +8,7 @@ import (
 
 	"github.com/ansel1/merry"
 	"github.com/gorilla/mux"
+	"github.com/kduong-dev/goutil/fatal"
 	"github.com/kduong-dev/storage-service/internal/apikey"
 	"github.com/kduong-dev/storage-service/internal/file"
 	"github.com/kduong-dev/storage-service/internal/storage"
@@ -49,11 +50,12 @@ func NewRouter(input NewRouterInput) *mux.Router {
 // existence isn't disclosed.
 func (handler *Handler) getUpload(ctx context.Context, uploadID string) (*upload.Object, error) {
 	object, err := handler.uploadObjectStore.Get(ctx, uploadID)
-	if err != nil {
-		return nil, merrifyError(err)
+	if errors.Is(err, upload.ErrNotFound) {
+		return nil, merry.Wrap(err).WithHTTPCode(http.StatusNotFound).WithUserMessage("upload not found")
 	}
+	fatal.OnError(err)
 	if !isInNamespace(ctx, object.Key) {
-		return nil, merrifyError(upload.ErrNotFound)
+		return nil, merry.Wrap(upload.ErrNotFound).WithHTTPCode(http.StatusNotFound).WithUserMessage("upload not found")
 	}
 	return object, nil
 }
@@ -66,18 +68,19 @@ func (handler *Handler) getActiveUpload(ctx context.Context, uploadID string) (*
 		return nil, err
 	}
 	if object.Status != upload.StatusInitiated {
-		return nil, merrifyError(upload.ErrNotActive)
+		return nil, merry.Wrap(upload.ErrNotActive).WithHTTPCode(http.StatusConflict).WithUserMessage("upload is not active")
 	}
 	return object, nil
 }
 
 func (handler *Handler) getFile(ctx context.Context, fileID string) (*file.Object, error) {
 	object, err := handler.fileObjectStore.Get(ctx, fileID)
-	if err != nil {
-		return nil, merrifyError(err)
+	if errors.Is(err, file.ErrNotFound) {
+		return nil, merry.Wrap(err).WithHTTPCode(http.StatusNotFound).WithUserMessage("file not found")
 	}
+	fatal.OnError(err)
 	if !isInNamespace(ctx, object.Key) {
-		return nil, merrifyError(file.ErrNotFound)
+		return nil, merry.Wrap(file.ErrNotFound).WithHTTPCode(http.StatusNotFound).WithUserMessage("file not found")
 	}
 	return object, nil
 }
@@ -86,16 +89,4 @@ func (handler *Handler) getFile(ctx context.Context, fileID string) (*file.Objec
 // The trailing slash stops namespace "alpha" from matching "alpha-service/".
 func isInNamespace(ctx context.Context, key string) bool {
 	return strings.HasPrefix(key, apikey.GetNamespace(ctx)+"/")
-}
-
-func merrifyError(err error) error {
-	switch {
-	case errors.Is(err, upload.ErrNotFound):
-		return merry.Wrap(err).WithHTTPCode(http.StatusNotFound).WithUserMessage("upload not found")
-	case errors.Is(err, file.ErrNotFound):
-		return merry.Wrap(err).WithHTTPCode(http.StatusNotFound).WithUserMessage("file not found")
-	case errors.Is(err, upload.ErrNotActive):
-		return merry.Wrap(err).WithHTTPCode(http.StatusConflict).WithUserMessage("upload is not active")
-	}
-	return err
 }
