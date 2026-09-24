@@ -2,20 +2,11 @@ package storageservice
 
 import (
 	"context"
-	"errors"
 	"io"
 	"time"
 
 	"github.com/kduong-dev/goutil/config"
 	"github.com/kduong-dev/goutil/fatal"
-)
-
-var (
-	ErrUnauthorized   = errors.New("unauthorized")
-	ErrUploadNotFound = errors.New("upload not found")
-	ErrFileNotFound   = errors.New("file not found")
-	ErrBadRequest     = errors.New("bad request")
-	ErrServerError    = errors.New("server error")
 )
 
 // Upload tracks a multipart upload session.
