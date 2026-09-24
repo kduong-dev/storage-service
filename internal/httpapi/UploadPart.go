@@ -29,7 +29,7 @@ func (handler *Handler) UploadPart(responseWriter http.ResponseWriter, request *
 	uploadID := vars["upload_id"]
 	partNumber, err := strconv.Atoi(vars["part_number"])
 	if err != nil || partNumber < 1 {
-		err = merry.New("part_number must be a positive integer").WithHTTPCode(http.StatusBadRequest)
+		err = merry.UserError("part_number must be a positive integer").WithHTTPCode(http.StatusBadRequest)
 		return
 	}
 	if _, err = handler.getUpload(ctx, uploadID); err != nil {
@@ -48,7 +48,7 @@ func (handler *Handler) UploadPart(responseWriter http.ResponseWriter, request *
 	if err != nil {
 		var maxBytesError *http.MaxBytesError
 		if errors.As(err, &maxBytesError) {
-			err = merry.New("part exceeds the 5 MB size limit").WithHTTPCode(http.StatusRequestEntityTooLarge)
+			err = merry.UserError("part exceeds the 5 MB size limit").WithHTTPCode(http.StatusRequestEntityTooLarge)
 		} else {
 			err = merry.Wrap(err).WithHTTPCode(http.StatusInternalServerError)
 		}

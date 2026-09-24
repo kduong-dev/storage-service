@@ -12,7 +12,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ansel1/merry"
 	"github.com/kduong-dev/goutil/fatal"
+	"github.com/kduong-dev/goutil/httpx"
 )
 
 type HTTPClient struct {
@@ -117,7 +119,7 @@ func (client *HTTPClient) do(request *http.Request, expectedStatusCode int) (*ht
 	}
 	if response.StatusCode != expectedStatusCode {
 		defer response.Body.Close()
-		return nil, mapResponseError(response)
+		return nil, responseError(response)
 	}
 	return response, nil
 }
@@ -131,23 +133,24 @@ func (client *HTTPClient) doJSON(request *http.Request, expectedStatusCode int, 
 	return json.NewDecoder(response.Body).Decode(output)
 }
 
-func mapResponseError(response *http.Response) error {
-	body, err := io.ReadAll(response.Body)
-	if err != nil {
-		return err
+// responseError tags the error httpx.ResponseError builds with the matching
+// sentinel, keeping its HTTP status code and the server's user message.
+func responseError(response *http.Response) error {
+	err := httpx.ResponseError(response)
+	if err == nil {
+		err = merry.Errorf("unexpected status code %d", response.StatusCode).WithHTTPCode(response.StatusCode)
 	}
-	message := strings.TrimSpace(string(body))
 	switch response.StatusCode {
 	case http.StatusBadRequest, http.StatusRequestEntityTooLarge:
-		return fmt.Errorf("%w: %s", ErrBadRequest, message)
+		return merry.WithCause(err, ErrBadRequest)
 	case http.StatusUnauthorized:
-		return fmt.Errorf("%w: %s", ErrUnauthorized, message)
+		return merry.WithCause(err, ErrUnauthorized)
 	case http.StatusNotFound:
 		if strings.Contains(response.Request.URL.Path, "/uploads/") {
-			return fmt.Errorf("%w: %s", ErrUploadNotFound, message)
+			return merry.WithCause(err, ErrUploadNotFound)
 		}
-		return fmt.Errorf("%w: %s", ErrFileNotFound, message)
+		return merry.WithCause(err, ErrFileNotFound)
 	default:
-		return fmt.Errorf("%w: %s", ErrServerError, message)
+		return merry.WithCause(err, ErrServerError)
 	}
 }

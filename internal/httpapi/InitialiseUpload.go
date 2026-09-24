@@ -18,10 +18,10 @@ func validateInitialiseUploadRequest(input storageservice.InitialiseUploadReques
 	// Keys become paths under the caller's namespace, so they must not be able
 	// to climb out of it.
 	if !filepath.IsLocal(input.Key) || strings.Contains(input.Key, `\`) {
-		return merry.New("key must be a relative path without '..' segments").WithHTTPCode(http.StatusBadRequest)
+		return merry.UserError("key must be a relative path without '..' segments").WithHTTPCode(http.StatusBadRequest)
 	}
 	if input.ContentType == "" {
-		return merry.New("content_type is required").WithHTTPCode(http.StatusBadRequest)
+		return merry.UserError("content_type is required").WithHTTPCode(http.StatusBadRequest)
 	}
 	return nil
 }

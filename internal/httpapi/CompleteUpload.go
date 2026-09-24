@@ -31,7 +31,7 @@ func (handler *Handler) CompleteUpload(responseWriter http.ResponseWriter, reque
 		return
 	}
 	if len(uploadObject.Parts) == 0 {
-		err = merry.New("no parts have been uploaded").WithHTTPCode(http.StatusBadRequest)
+		err = merry.UserError("no parts have been uploaded").WithHTTPCode(http.StatusBadRequest)
 		return
 	}
 	partNumbers := make([]int, len(uploadObject.Parts))

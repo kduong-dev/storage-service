@@ -4,12 +4,14 @@ import (
 	"context"
 	"errors"
 	"io"
+	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/ansel1/merry"
 	"github.com/kduong-dev/goutil/eventsource"
 	"github.com/kduong-dev/storage-service/internal/apikey"
 	"github.com/kduong-dev/storage-service/internal/file"
@@ -92,6 +94,8 @@ func TestHandler(t *testing.T) {
 			Convey("Then beta-service cannot add parts to it", func() {
 				_, err := betaClient.UploadPart(ctx, startedUpload.ID, 1, strings.NewReader("intrusion"))
 				So(errors.Is(err, storageservice.ErrUploadNotFound), ShouldBeTrue)
+				So(merry.HTTPCode(err), ShouldEqual, http.StatusNotFound)
+				So(merry.UserMessage(err), ShouldEqual, "upload not found")
 			})
 			Convey("Then beta-service cannot complete it", func() {
 				_, err := betaClient.CompleteUpload(ctx, startedUpload.ID)
@@ -100,6 +104,8 @@ func TestHandler(t *testing.T) {
 			Convey("Then a part over 5 MB is rejected as a bad request", func() {
 				_, err := alphaClient.UploadPart(ctx, startedUpload.ID, 1, strings.NewReader(strings.Repeat("a", 5*1024*1024+1)))
 				So(errors.Is(err, storageservice.ErrBadRequest), ShouldBeTrue)
+				So(merry.HTTPCode(err), ShouldEqual, http.StatusRequestEntityTooLarge)
+				So(merry.UserMessage(err), ShouldEqual, "part exceeds the 5 MB size limit")
 			})
 			Convey("Then beta-service cannot abort it", func() {
 				err := betaClient.AbortUpload(ctx, startedUpload.ID)
