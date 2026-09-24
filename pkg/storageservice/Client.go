@@ -18,6 +18,12 @@ var (
 	ErrServerError    = errors.New("server error")
 )
 
+// InitialiseUploadRequest is the request body for starting an upload session.
+type InitialiseUploadRequest struct {
+	Key         string `json:"key"`
+	ContentType string `json:"content_type"`
+}
+
 // Upload tracks a multipart upload session.
 type Upload struct {
 	ID          string `json:"id"`

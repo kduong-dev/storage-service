@@ -35,13 +35,8 @@ func NewHTTPClient(input NewHTTPClientInput) *HTTPClient {
 	}
 }
 
-type initialiseUploadRequestBody struct {
-	Key         string `json:"key"`
-	ContentType string `json:"content_type"`
-}
-
 func (client *HTTPClient) InitialiseUpload(ctx context.Context, key string, contentType string) (output *Upload, err error) {
-	requestBody := fatal.UnlessMarshal(initialiseUploadRequestBody{Key: key, ContentType: contentType})
+	requestBody := fatal.UnlessMarshal(InitialiseUploadRequest{Key: key, ContentType: contentType})
 	request := client.newRequest(ctx, http.MethodPost, "/storage/v1/uploads", bytes.NewReader(requestBody))
 	request.Header.Set("Content-Type", "application/json")
 	err = client.doJSON(request, http.StatusCreated, &output)

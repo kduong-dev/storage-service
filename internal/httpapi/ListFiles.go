@@ -10,17 +10,13 @@ import (
 	"github.com/kduong-dev/goutil/httpx"
 	"github.com/kduong-dev/storage-service/internal/apikey"
 	"github.com/kduong-dev/storage-service/internal/file"
+	"github.com/kduong-dev/storage-service/pkg/storageservice"
 )
 
 const (
 	defaultListFilesLimit = 100
 	maxListFilesLimit     = 1000
 )
-
-type ListFilesResponse struct {
-	Files      []*file.Object `json:"files"`
-	NextCursor string         `json:"next_cursor,omitempty"`
-}
 
 func (handler *Handler) ListFiles(responseWriter http.ResponseWriter, request *http.Request) {
 	var err error
@@ -49,8 +45,8 @@ func (handler *Handler) ListFiles(responseWriter http.ResponseWriter, request *h
 		return
 	}
 	fatal.OnError(err)
-	httpx.SendJSONResponse(responseWriter, http.StatusOK, ListFilesResponse{
-		Files:      output.Objects,
+	httpx.SendJSONResponse(responseWriter, http.StatusOK, storageservice.ListFilesResponse{
+		Files:      toFiles(output.Objects),
 		NextCursor: output.NextAfter,
 	})
 }

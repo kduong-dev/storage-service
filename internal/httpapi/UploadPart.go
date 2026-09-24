@@ -12,15 +12,10 @@ import (
 	"github.com/kduong-dev/goutil/httpx"
 	"github.com/kduong-dev/storage-service/internal/storage"
 	"github.com/kduong-dev/storage-service/internal/upload"
+	"github.com/kduong-dev/storage-service/pkg/storageservice"
 )
 
 const maxPartSizeBytes = 5 * 1024 * 1024
-
-type UploadPartResponse struct {
-	PartNumber int    `json:"part_number"`
-	Size       int64  `json:"size"`
-	Checksum   string `json:"checksum"`
-}
 
 func (handler *Handler) UploadPart(responseWriter http.ResponseWriter, request *http.Request) {
 	var err error
@@ -69,7 +64,7 @@ func (handler *Handler) UploadPart(responseWriter http.ResponseWriter, request *
 		return
 	}
 	fatal.OnError(err)
-	httpx.SendJSONResponse(responseWriter, http.StatusOK, UploadPartResponse{
+	httpx.SendJSONResponse(responseWriter, http.StatusOK, storageservice.UploadPartResponse{
 		PartNumber: partNumber,
 		Size:       output.Size,
 		Checksum:   output.Checksum,

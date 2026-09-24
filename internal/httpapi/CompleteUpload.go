@@ -76,5 +76,5 @@ func (handler *Handler) CompleteUpload(responseWriter http.ResponseWriter, reque
 		CreatedAt:   now,
 	}
 	fatal.OnError(handler.fileObjectStore.Put(ctx, fileObject))
-	httpx.SendJSONResponse(responseWriter, http.StatusCreated, fileObject)
+	httpx.SendJSONResponse(responseWriter, http.StatusCreated, toFile(fileObject))
 }

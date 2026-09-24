@@ -12,14 +12,10 @@ import (
 	"github.com/kduong-dev/goutil/httpx"
 	"github.com/kduong-dev/storage-service/internal/apikey"
 	"github.com/kduong-dev/storage-service/internal/upload"
+	"github.com/kduong-dev/storage-service/pkg/storageservice"
 )
 
-type InitialiseUploadInput struct {
-	Key         string `json:"key"`
-	ContentType string `json:"content_type"`
-}
-
-func (input *InitialiseUploadInput) Validate() error {
+func validateInitialiseUploadRequest(input storageservice.InitialiseUploadRequest) error {
 	// Keys become paths under the caller's namespace, so they must not be able
 	// to climb out of it.
 	if !filepath.IsLocal(input.Key) || strings.Contains(input.Key, `\`) {
@@ -39,11 +35,11 @@ func (handler *Handler) InitialiseUpload(responseWriter http.ResponseWriter, req
 		}
 	}()
 	ctx := request.Context()
-	input, err := httpx.DecodeJSONBody[InitialiseUploadInput](request)
+	input, err := httpx.DecodeJSONBody[storageservice.InitialiseUploadRequest](request)
 	if err != nil {
 		return
 	}
-	if err = input.Validate(); err != nil {
+	if err = validateInitialiseUploadRequest(input); err != nil {
 		return
 	}
 	uploadID := uuid.NewString()
