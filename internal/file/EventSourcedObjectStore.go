@@ -90,7 +90,7 @@ func (store *EventSourcedObjectStore) apply(ctx context.Context, event *eventsou
 	fatal.UnlessUnmarshal(event.Data, &frame)
 	if frame.Type == EventTypeFileCreated {
 		store.objectByFileID[frame.FileCreatedEvent.ID] = frame.FileCreatedEvent
-		store.objects.Insert(frame.FileCreatedEvent)
+		store.objects.Add(frame.FileCreatedEvent)
 	}
 	return nil
 }

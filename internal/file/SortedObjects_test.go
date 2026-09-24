@@ -17,18 +17,27 @@ func TestSortedObjects(t *testing.T) {
 			{ID: "file-d", Key: "alpha/images/logo.png"},
 			{ID: "file-b", Key: "alpha/reports/b.html"},
 		} {
-			objects.Insert(object)
+			objects.Add(object)
 		}
-		ids := func(objects file.SortedObjects) []string {
+		ids := func(objects []*file.Object) []string {
 			result := make([]string, len(objects))
 			for index, object := range objects {
 				result[index] = object.ID
 			}
 			return result
 		}
-		Convey("When inspecting their order", func() {
+		Convey("When reading every object in one page", func() {
+			page, _ := objects.Page(file.PageInput{Limit: 10})
 			Convey("Then they are ordered by key, then by ID for shared keys", func() {
-				So(ids(objects), ShouldResemble, []string{"file-d", "file-a", "file-b", "file-c", "file-e"})
+				So(ids(page), ShouldResemble, []string{"file-d", "file-a", "file-b", "file-c", "file-e"})
+			})
+		})
+		Convey("When an object is added after a read has sorted them", func() {
+			objects.Page(file.PageInput{Limit: 10})
+			objects.Add(&file.Object{ID: "file-f", Key: "alpha/aaa.html"})
+			page, _ := objects.Page(file.PageInput{Limit: 10})
+			Convey("Then the next read places it in order", func() {
+				So(ids(page), ShouldResemble, []string{"file-f", "file-d", "file-a", "file-b", "file-c", "file-e"})
 			})
 		})
 		Convey("When finding where a key prefix starts", func() {
@@ -53,7 +62,7 @@ func TestSortedObjects(t *testing.T) {
 			})
 		})
 		Convey("When taking the page after the last object on a previous page", func() {
-			page, hasMore := objects.Page(file.PageInput{KeyPrefix: "alpha/", After: objects[1], Limit: 2})
+			page, hasMore := objects.Page(file.PageInput{KeyPrefix: "alpha/", After: &file.Object{ID: "file-a", Key: "alpha/reports/a.html"}, Limit: 2})
 			Convey("Then it continues within the prefix and reports no more once the prefix ends", func() {
 				So(ids(page), ShouldResemble, []string{"file-b", "file-c"})
 				So(hasMore, ShouldBeFalse)
