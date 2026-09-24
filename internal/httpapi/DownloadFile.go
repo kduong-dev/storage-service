@@ -21,11 +21,11 @@ func (handler *Handler) DownloadFile(responseWriter http.ResponseWriter, request
 	vars := mux.Vars(request)
 	fileID := vars["file_id"]
 	object, err := handler.fileObjectStore.Get(ctx, fileID)
-	if err = toResponseErrorOrFatal(err); err != nil {
+	if err = merrifyOrFatal(err); err != nil {
 		return
 	}
 	if !handler.isInNamespace(ctx, object.Key) {
-		err = toResponseError(file.ErrNotFound)
+		err = merrify(file.ErrNotFound)
 		return
 	}
 	readSeekCloser, err := handler.storage.OpenFile(object.Key)

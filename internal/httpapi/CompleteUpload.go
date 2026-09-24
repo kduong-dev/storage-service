@@ -46,7 +46,7 @@ func (handler *Handler) CompleteUpload(responseWriter http.ResponseWriter, reque
 		PartNumbers: partNumbers,
 	})
 	if err != nil {
-		err = toResponseError(err)
+		err = merrify(err)
 		return
 	}
 	now := time.Now().UTC().Format(time.RFC3339)
@@ -57,7 +57,7 @@ func (handler *Handler) CompleteUpload(responseWriter http.ResponseWriter, reque
 		Checksum:  output.Checksum,
 		UpdatedAt: now,
 	})
-	if err = toResponseErrorOrFatal(err); err != nil {
+	if err = merrifyOrFatal(err); err != nil {
 		return
 	}
 	fileObject := &storageservice.File{
