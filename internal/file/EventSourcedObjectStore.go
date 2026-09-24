@@ -17,8 +17,6 @@ type EventSourcedObjectStore struct {
 	cursor         int64
 	objectByFileID map[string]*storageservice.File
 	objects        SortedObjects
-	// revisionByKey is the latest revision given to each key, deleted or not.
-	revisionByKey map[string]int
 }
 
 type NewEventSourcedObjectStoreInput struct {
@@ -29,7 +27,6 @@ func NewEventSourcedObjectStore(input NewEventSourcedObjectStoreInput) *EventSou
 	return &EventSourcedObjectStore{
 		log:            input.Log,
 		objectByFileID: make(map[string]*storageservice.File),
-		revisionByKey:  make(map[string]int),
 	}
 }
 
@@ -43,20 +40,17 @@ func (store *EventSourcedObjectStore) catchUp(ctx context.Context) {
 	fatal.OnError(err)
 }
 
-func (store *EventSourcedObjectStore) Put(ctx context.Context, object *storageservice.File) (*storageservice.File, error) {
+func (store *EventSourcedObjectStore) Put(ctx context.Context, object *storageservice.File) error {
 	store.catchUp(ctx)
 	if _, ok := store.objectByFileID[object.ID]; ok {
-		return nil, ErrAlreadyExists
+		return ErrAlreadyExists
 	}
 	copied := *object
-	copied.Revision = store.revisionByKey[object.Key] + 1
-	if _, err := store.log.Append(fatal.UnlessMarshal(EventFrame{
+	_, err := store.log.Append(fatal.UnlessMarshal(EventFrame{
 		EventBase:        eventsource.NewEventBase(EventTypeFileCreated),
 		FileCreatedEvent: &copied,
-	})); err != nil {
-		return nil, err
-	}
-	return &copied, nil
+	}))
+	return err
 }
 
 func (store *EventSourcedObjectStore) Get(ctx context.Context, fileID string) (*storageservice.File, error) {
@@ -109,10 +103,8 @@ func (store *EventSourcedObjectStore) apply(ctx context.Context, event *eventsou
 	fatal.UnlessUnmarshal(event.Data, &frame)
 	switch frame.Type {
 	case EventTypeFileCreated:
-		object := frame.FileCreatedEvent
-		store.objectByFileID[object.ID] = object
-		store.objects.Add(object)
-		store.revisionByKey[object.Key] = max(store.revisionByKey[object.Key], object.Revision)
+		store.objectByFileID[frame.FileCreatedEvent.ID] = frame.FileCreatedEvent
+		store.objects.Add(frame.FileCreatedEvent)
 	case EventTypeFileDeleted:
 		object := store.objectByFileID[frame.FileDeletedEvent.FileID]
 		delete(store.objectByFileID, object.ID)

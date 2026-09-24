@@ -22,7 +22,7 @@ func NewObjectStoreThreadSafeDecorator(input NewObjectStoreThreadSafeDecoratorIn
 	return &ObjectStoreThreadSafeDecorator{decorated: input.Decorated}
 }
 
-func (decorator *ObjectStoreThreadSafeDecorator) Put(ctx context.Context, object *storageservice.File) (*storageservice.File, error) {
+func (decorator *ObjectStoreThreadSafeDecorator) Put(ctx context.Context, object *storageservice.File) error {
 	decorator.mutex.Lock()
 	defer decorator.mutex.Unlock()
 	return decorator.decorated.Put(ctx, object)

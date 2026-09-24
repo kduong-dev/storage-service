@@ -23,46 +23,16 @@ func TestEventSourcedObjectStore(t *testing.T) {
 			Checksum:    "abc",
 			CreatedAt:   "2026-01-01T00:00:00Z",
 		}
-		stored, err := store.Put(ctx, object)
-		So(err, ShouldBeNil)
-		Convey("Then it is stored as the first revision of its key", func() {
-			So(stored.Revision, ShouldEqual, 1)
-		})
+		So(store.Put(ctx, object), ShouldBeNil)
 		Convey("When the object is fetched", func() {
 			fetched, err := store.Get(ctx, "file-1")
-			Convey("Then it matches what was stored", func() {
+			Convey("Then it matches what was created", func() {
 				So(err, ShouldBeNil)
-				So(fetched, ShouldResemble, stored)
-			})
-		})
-		Convey("When another object is put under the same key", func() {
-			second, err := store.Put(ctx, &storageservice.File{ID: "file-2", Key: object.Key})
-			So(err, ShouldBeNil)
-			Convey("Then it is the next revision and the first is kept", func() {
-				So(second.Revision, ShouldEqual, 2)
-				first, err := store.Get(ctx, "file-1")
-				So(err, ShouldBeNil)
-				So(first.Revision, ShouldEqual, 1)
-			})
-			Convey("And the latest revision is deleted before another put", func() {
-				So(store.Delete(ctx, "file-2"), ShouldBeNil)
-				third, err := store.Put(ctx, &storageservice.File{ID: "file-3", Key: object.Key})
-				So(err, ShouldBeNil)
-				Convey("Then the deleted revision is not reused", func() {
-					So(third.Revision, ShouldEqual, 3)
-				})
-			})
-			Convey("And another store is built from the same event log", func() {
-				rebuilt := file.NewEventSourcedObjectStore(file.NewEventSourcedObjectStoreInput{Log: log})
-				third, err := rebuilt.Put(ctx, &storageservice.File{ID: "file-3", Key: object.Key})
-				So(err, ShouldBeNil)
-				Convey("Then it continues the revisions", func() {
-					So(third.Revision, ShouldEqual, 3)
-				})
+				So(fetched, ShouldResemble, object)
 			})
 		})
 		Convey("When an object with the same ID is put again", func() {
-			_, err := store.Put(ctx, object)
+			err := store.Put(ctx, object)
 			Convey("Then it is rejected as already existing", func() {
 				So(err, ShouldEqual, file.ErrAlreadyExists)
 			})

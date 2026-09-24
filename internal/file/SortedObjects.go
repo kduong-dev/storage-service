@@ -8,8 +8,8 @@ import (
 	"github.com/kduong-dev/storage-service/pkg/storageservice"
 )
 
-// SortedObjects orders objects by key, then by revision since several files
-// can share a key, so key prefixes form contiguous ranges. Adds are appended and
+// SortedObjects orders objects by key, then by ID since several files can
+// share a key, so key prefixes form contiguous ranges. Adds are appended and
 // sorted on the next read, so replaying a log costs one sort rather than a
 // shifting insert per object.
 type SortedObjects struct {
@@ -18,7 +18,7 @@ type SortedObjects struct {
 }
 
 func compareObjects(left *storageservice.File, right *storageservice.File) int {
-	return cmp.Or(strings.Compare(left.Key, right.Key), cmp.Compare(left.Revision, right.Revision))
+	return cmp.Or(strings.Compare(left.Key, right.Key), strings.Compare(left.ID, right.ID))
 }
 
 func (sortedObjects *SortedObjects) Add(object *storageservice.File) {
@@ -35,7 +35,7 @@ func (sortedObjects *SortedObjects) sort() {
 	}
 }
 
-// Remove deletes the object, matched by key and revision, if present.
+// Remove deletes the object, matched by key and ID, if present.
 func (sortedObjects *SortedObjects) Remove(object *storageservice.File) {
 	sortedObjects.sort()
 	if index, found := slices.BinarySearchFunc(sortedObjects.objects, object, compareObjects); found {

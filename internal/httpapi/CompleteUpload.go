@@ -38,7 +38,7 @@ func (handler *Handler) CompleteUpload(responseWriter http.ResponseWriter, reque
 		partNumbers[index] = part.PartNumber
 	}
 	sort.Ints(partNumbers)
-	fileID := uuid.NewString()
+	fileID := uuid.Must(uuid.NewV7()).String()
 	output, err := handler.storage.CompleteUpload(ctx, storage.CompleteUploadInput{
 		UploadID:    uploadID,
 		FileID:      fileID,
@@ -59,14 +59,14 @@ func (handler *Handler) CompleteUpload(responseWriter http.ResponseWriter, reque
 	if err = merrifiedSentinels.MerrifyOrFatal(err); err != nil {
 		return
 	}
-	fileObject, err := handler.fileObjectStore.Put(ctx, &storageservice.File{
+	fileObject := &storageservice.File{
 		ID:          fileID,
 		Key:         uploadObject.Key,
 		ContentType: uploadObject.ContentType,
 		Size:        output.Size,
 		Checksum:    output.Checksum,
 		CreatedAt:   now,
-	})
-	fatal.OnError(err)
+	}
+	fatal.OnError(handler.fileObjectStore.Put(ctx, fileObject))
 	httpx.SendJSONResponse(responseWriter, http.StatusCreated, fileObject)
 }

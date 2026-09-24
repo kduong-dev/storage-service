@@ -124,15 +124,20 @@ func TestHandler(t *testing.T) {
 					So(err, ShouldBeNil)
 					return string(body)
 				}
-				Convey("Then it is the next revision and each revision keeps its own content", func() {
-					So(uploadedFile.Revision, ShouldEqual, 1)
-					So(secondFile.Revision, ShouldEqual, 2)
+				Convey("Then each file keeps its own content", func() {
 					So(downloadBody(uploadedFile.ID), ShouldEqual, "<h1>report</h1>")
 					So(downloadBody(secondFile.ID), ShouldEqual, "<h1>second</h1>")
 				})
-				Convey("And the first revision is deleted", func() {
+				Convey("Then both are listed, oldest first", func() {
+					response, err := alphaClient.ListFileObjects(ctx, storageservice.ListFileObjectsInput{})
+					So(err, ShouldBeNil)
+					So(len(response.Files), ShouldEqual, 2)
+					So(response.Files[0].ID, ShouldEqual, uploadedFile.ID)
+					So(response.Files[1].ID, ShouldEqual, secondFile.ID)
+				})
+				Convey("And the first file is deleted", func() {
 					So(alphaClient.DeleteFile(ctx, storageservice.DeleteFileInput{FileID: uploadedFile.ID}), ShouldBeNil)
-					Convey("Then the second revision can still be downloaded", func() {
+					Convey("Then the second file can still be downloaded", func() {
 						So(downloadBody(secondFile.ID), ShouldEqual, "<h1>second</h1>")
 					})
 				})
