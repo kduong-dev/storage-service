@@ -1,9 +1,7 @@
 package file
 
 import (
-	"cmp"
 	"context"
-	"slices"
 	"strings"
 
 	"github.com/kduong-dev/goutil/eventsource"
@@ -17,6 +15,7 @@ type EventSourcedObjectStore struct {
 	log            eventsource.Log
 	cursor         int64
 	objectByFileID map[string]*Object
+	objects        SortedObjects
 }
 
 type NewEventSourcedObjectStoreInput struct {
@@ -74,27 +73,16 @@ func (store *EventSourcedObjectStore) List(ctx context.Context, input ListInput)
 		}
 		after = object
 	}
-	var matches []*Object
-	for _, object := range store.objectByFileID {
-		if strings.HasPrefix(object.Key, input.KeyPrefix) && (after == nil || compareObjects(object, after) > 0) {
-			matches = append(matches, object)
-		}
-	}
-	slices.SortFunc(matches, compareObjects)
-	output := &ListOutput{Objects: make([]*Object, 0, min(len(matches), input.Limit))}
-	for _, object := range matches[:min(len(matches), input.Limit)] {
+	page, hasMore := store.objects.Page(PageInput{KeyPrefix: input.KeyPrefix, After: after, Limit: input.Limit})
+	output := &ListOutput{Objects: make([]*Object, len(page))}
+	for index, object := range page {
 		copied := *object
-		output.Objects = append(output.Objects, &copied)
+		output.Objects[index] = &copied
 	}
-	if len(matches) > input.Limit {
-		output.NextAfter = output.Objects[len(output.Objects)-1].ID
+	if hasMore {
+		output.NextAfter = page[len(page)-1].ID
 	}
 	return output, nil
-}
-
-// compareObjects orders by key, then by ID since several uploads can share a key.
-func compareObjects(left *Object, right *Object) int {
-	return cmp.Or(strings.Compare(left.Key, right.Key), strings.Compare(left.ID, right.ID))
 }
 
 func (store *EventSourcedObjectStore) apply(ctx context.Context, event *eventsource.Event) error {
@@ -102,6 +90,7 @@ func (store *EventSourcedObjectStore) apply(ctx context.Context, event *eventsou
 	fatal.UnlessUnmarshal(event.Data, &frame)
 	if frame.Type == EventTypeFileCreated {
 		store.objectByFileID[frame.FileCreatedEvent.ID] = frame.FileCreatedEvent
+		store.objects.Insert(frame.FileCreatedEvent)
 	}
 	return nil
 }
