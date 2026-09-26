@@ -9,8 +9,8 @@ import (
 	"github.com/kduong-dev/goutil/fatal"
 )
 
-// Upload tracks a multipart upload session.
-type Upload struct {
+// UploadObject tracks a multipart upload session.
+type UploadObject struct {
 	ID          string `json:"id"`
 	Key         string `json:"key"`
 	ContentType string `json:"content_type"`
@@ -27,8 +27,8 @@ type Part struct {
 	Checksum   string `json:"checksum"` // hex-encoded MD5 of the part bytes
 }
 
-// File is the completed, stored object produced after an upload is finalised.
-type File struct {
+// FileObject is the completed, stored object produced after an upload is finalised.
+type FileObject struct {
 	ID          string `json:"id"`
 	Key         string `json:"key"`
 	ContentType string `json:"content_type"`
@@ -43,24 +43,24 @@ type File struct {
 type Client interface {
 	// InitialiseUpload begins a new multipart upload session. key is a
 	// relative path within the caller's namespace.
-	InitialiseUpload(ctx context.Context, input InitialiseUploadInput) (*Upload, error)
+	InitialiseUpload(ctx context.Context, input InitialiseUploadInput) (*UploadObject, error)
 
 	// UploadPart streams one chunk to an existing upload session.
 	UploadPart(ctx context.Context, input UploadPartInput) (*UploadPartOutput, error)
 
-	// CompleteUpload finalises an upload session and assembles all parts into a File.
-	CompleteUpload(ctx context.Context, input CompleteUploadInput) (*File, error)
+	// CompleteUpload finalises an upload session and assembles all parts into a FileObject.
+	CompleteUpload(ctx context.Context, input CompleteUploadInput) (*FileObject, error)
 
 	// AbortUpload cancels an upload session and discards its uploaded parts.
 	AbortUpload(ctx context.Context, input AbortUploadInput) error
 
 	// DownloadFile streams the assembled file for the given file ID.
-	// The caller is responsible for closing DownloadFileResponse.Body.
-	DownloadFile(ctx context.Context, input DownloadFileInput) (*DownloadFileResponse, error)
+	// The caller is responsible for closing DownloadFileOutput.Body.
+	DownloadFile(ctx context.Context, input DownloadFileInput) (*DownloadFileOutput, error)
 
 	// ListFileObjects returns one page of the caller's files, ordered by key. Pass
 	// the returned NextCursor back as Cursor to fetch the next page.
-	ListFileObjects(ctx context.Context, input ListFileObjectsInput) (*ListFileObjectsResponse, error)
+	ListFileObjects(ctx context.Context, input ListFileObjectsInput) (*ListFileObjectsOutput, error)
 
 	// DeleteFile removes the file and its metadata.
 	DeleteFile(ctx context.Context, input DeleteFileInput) error
@@ -96,8 +96,7 @@ type DownloadFileInput struct {
 	FileID string
 }
 
-// DownloadFileResponse holds the streamed file content and its metadata.
-type DownloadFileResponse struct {
+type DownloadFileOutput struct {
 	ContentType        string
 	ContentDisposition string
 	Body               io.ReadCloser
@@ -115,8 +114,8 @@ type ListFileObjectsInput struct {
 	Limit int
 }
 
-type ListFileObjectsResponse struct {
-	Files []*File `json:"files"`
+type ListFileObjectsOutput struct {
+	Files []*FileObject `json:"files"`
 	// NextCursor is empty on the last page.
 	NextCursor string `json:"next_cursor,omitempty"`
 }

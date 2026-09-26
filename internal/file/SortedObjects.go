@@ -13,15 +13,15 @@ import (
 // sorted on the next read, so replaying a log costs one sort rather than a
 // shifting insert per object.
 type SortedObjects struct {
-	objects  []*storageservice.File
+	objects  []*storageservice.FileObject
 	unsorted bool
 }
 
-func compareObjects(left *storageservice.File, right *storageservice.File) int {
+func compareObjects(left *storageservice.FileObject, right *storageservice.FileObject) int {
 	return cmp.Or(strings.Compare(left.Key, right.Key), strings.Compare(left.ID, right.ID))
 }
 
-func (sortedObjects *SortedObjects) Add(object *storageservice.File) {
+func (sortedObjects *SortedObjects) Add(object *storageservice.FileObject) {
 	if length := len(sortedObjects.objects); length > 0 && compareObjects(sortedObjects.objects[length-1], object) > 0 {
 		sortedObjects.unsorted = true
 	}
@@ -36,7 +36,7 @@ func (sortedObjects *SortedObjects) sort() {
 }
 
 // Remove deletes the object, matched by key and ID, if present.
-func (sortedObjects *SortedObjects) Remove(object *storageservice.File) {
+func (sortedObjects *SortedObjects) Remove(object *storageservice.FileObject) {
 	sortedObjects.sort()
 	if index, found := slices.BinarySearchFunc(sortedObjects.objects, object, compareObjects); found {
 		sortedObjects.objects = slices.Delete(sortedObjects.objects, index, index+1)
@@ -44,7 +44,7 @@ func (sortedObjects *SortedObjects) Remove(object *storageservice.File) {
 }
 
 // IndexAfter returns the index of the first object ordered after the given one.
-func (sortedObjects *SortedObjects) IndexAfter(object *storageservice.File) int {
+func (sortedObjects *SortedObjects) IndexAfter(object *storageservice.FileObject) int {
 	sortedObjects.sort()
 	index, found := slices.BinarySearchFunc(sortedObjects.objects, object, compareObjects)
 	if found {
@@ -57,7 +57,7 @@ func (sortedObjects *SortedObjects) IndexAfter(object *storageservice.File) int 
 // ordered before the prefix, which is where any keys with that prefix start.
 func (sortedObjects *SortedObjects) IndexOfKeyPrefix(keyPrefix string) int {
 	sortedObjects.sort()
-	index, _ := slices.BinarySearchFunc(sortedObjects.objects, keyPrefix, func(object *storageservice.File, keyPrefix string) int {
+	index, _ := slices.BinarySearchFunc(sortedObjects.objects, keyPrefix, func(object *storageservice.FileObject, keyPrefix string) int {
 		return strings.Compare(object.Key, keyPrefix)
 	})
 	return index
@@ -66,13 +66,13 @@ func (sortedObjects *SortedObjects) IndexOfKeyPrefix(keyPrefix string) int {
 type PageInput struct {
 	KeyPrefix string
 	// After is the object the page starts after, nil for the first page.
-	After *storageservice.File
+	After *storageservice.FileObject
 	Limit int
 }
 
 // Page returns up to Limit objects with the key prefix, starting after
 // input.After, and whether more follow.
-func (sortedObjects *SortedObjects) Page(input PageInput) (page []*storageservice.File, hasMore bool) {
+func (sortedObjects *SortedObjects) Page(input PageInput) (page []*storageservice.FileObject, hasMore bool) {
 	start := sortedObjects.IndexOfKeyPrefix(input.KeyPrefix)
 	if input.After != nil {
 		start = max(start, sortedObjects.IndexAfter(input.After))

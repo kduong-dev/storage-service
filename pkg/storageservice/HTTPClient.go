@@ -38,7 +38,7 @@ func NewHTTPClient(input NewHTTPClientInput) *HTTPClient {
 	}
 }
 
-func (client *HTTPClient) InitialiseUpload(ctx context.Context, input InitialiseUploadInput) (output *Upload, err error) {
+func (client *HTTPClient) InitialiseUpload(ctx context.Context, input InitialiseUploadInput) (output *UploadObject, err error) {
 	requestBody := fatal.UnlessMarshal(input)
 	request := client.newRequest(ctx, http.MethodPost, "/storage/v1/uploads", bytes.NewReader(requestBody))
 	request.Header.Set("Content-Type", "application/json")
@@ -63,7 +63,7 @@ func (client *HTTPClient) UploadPart(ctx context.Context, input UploadPartInput)
 	return
 }
 
-func (client *HTTPClient) CompleteUpload(ctx context.Context, input CompleteUploadInput) (output *File, err error) {
+func (client *HTTPClient) CompleteUpload(ctx context.Context, input CompleteUploadInput) (output *FileObject, err error) {
 	path := fmt.Sprintf("/storage/v1/uploads/%s/complete", url.PathEscape(input.UploadID))
 	request := client.newRequest(ctx, http.MethodPost, path, nil)
 	err = client.doJSON(doJSONInput{
@@ -85,14 +85,14 @@ func (client *HTTPClient) AbortUpload(ctx context.Context, input AbortUploadInpu
 	return response.Body.Close()
 }
 
-func (client *HTTPClient) DownloadFile(ctx context.Context, input DownloadFileInput) (output *DownloadFileResponse, err error) {
+func (client *HTTPClient) DownloadFile(ctx context.Context, input DownloadFileInput) (output *DownloadFileOutput, err error) {
 	path := fmt.Sprintf("/storage/v1/files/%s", url.PathEscape(input.FileID))
 	request := client.newRequest(ctx, http.MethodGet, path, nil)
 	response, err := client.do(request, http.StatusOK, ErrFileNotFound)
 	if err != nil {
 		return
 	}
-	output = &DownloadFileResponse{
+	output = &DownloadFileOutput{
 		ContentType:        response.Header.Get("Content-Type"),
 		ContentDisposition: response.Header.Get("Content-Disposition"),
 		Body:               response.Body,
@@ -110,7 +110,7 @@ func (client *HTTPClient) DeleteFile(ctx context.Context, input DeleteFileInput)
 	return response.Body.Close()
 }
 
-func (client *HTTPClient) ListFileObjects(ctx context.Context, input ListFileObjectsInput) (output *ListFileObjectsResponse, err error) {
+func (client *HTTPClient) ListFileObjects(ctx context.Context, input ListFileObjectsInput) (output *ListFileObjectsOutput, err error) {
 	query := url.Values{}
 	if input.Prefix != "" {
 		query.Set("prefix", input.Prefix)

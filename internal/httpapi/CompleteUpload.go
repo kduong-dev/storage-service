@@ -59,7 +59,7 @@ func (handler *Handler) CompleteUpload(responseWriter http.ResponseWriter, reque
 	if err = merrifiedSentinels.MerrifyOrFatal(err); err != nil {
 		return
 	}
-	fileObject := &storageservice.File{
+	fileObject := &storageservice.FileObject{
 		ID:          fileID,
 		Key:         uploadObject.Key,
 		ContentType: uploadObject.ContentType,

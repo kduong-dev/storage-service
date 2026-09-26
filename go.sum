@@ -72,8 +72,8 @@ github.com/jtolds/gls v4.20.0+incompatible h1:xdiiI2gbIgH/gLH7ADydsJ1uDOEzR8yvV7
 github.com/jtolds/gls v4.20.0+incompatible/go.mod h1:QJZ7F/aHp+rZTRtaJ1ow/lLfFfVYBRgL+9YlvaHOwJU=
 github.com/k0kubun/colorstring v0.0.0-20150214042306-9440f1994b88/go.mod h1:3w7q1U84EfirKl04SVQ/s7nPm1ZPhiXd34z40TNz36k=
 github.com/k0kubun/pp v2.3.0+incompatible/go.mod h1:GWse8YhT0p8pT4ir3ZgBbfZild3tgzSScAn6HmfYukg=
-github.com/kduong-dev/goutil v0.1.1-0.20260924074729-2f0f53b81452 h1:DHO+rISQZkv5M9bLb03jfwpeBWdoyzF19RjA28kXiqA=
-github.com/kduong-dev/goutil v0.1.1-0.20260924074729-2f0f53b81452/go.mod h1:dajVKcAnmgkWmkgjMOhj2yujATtzewU22kcWpq1apw0=
+github.com/kduong-dev/goutil v0.3.1 h1:8IY4Pq9NatGcq1EdOo9bAZITNm+PWeJdkDm/igt9lbw=
+github.com/kduong-dev/goutil v0.3.1/go.mod h1:dajVKcAnmgkWmkgjMOhj2yujATtzewU22kcWpq1apw0=
 github.com/klauspost/cpuid/v2 v2.2.10 h1:tBs3QSyvjDyFTq3uoc/9xFpCuOsJQFNPiAhYdw2skhE=
 github.com/klauspost/cpuid/v2 v2.2.10/go.mod h1:hqwkgyIinND0mEev00jJYCxPNVRVXFQeu1XKlok6oO0=
 github.com/mattn/go-colorable v0.0.9/go.mod h1:9vuHe8Xs5qXnSaW/c/ABM9alt+Vo+STaOChaDxuIBZU=

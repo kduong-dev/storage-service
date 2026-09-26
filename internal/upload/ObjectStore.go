@@ -7,11 +7,11 @@ import (
 )
 
 type ObjectStore interface {
-	Initialise(ctx context.Context, object *storageservice.Upload) error
+	Initialise(ctx context.Context, object *storageservice.UploadObject) error
 	RecordPart(ctx context.Context, input RecordPartInput) error
 	Complete(ctx context.Context, input CompleteInput) error
 	Abort(ctx context.Context, input AbortInput) error
-	Get(ctx context.Context, uploadID string) (*storageservice.Upload, error)
+	Get(ctx context.Context, uploadID string) (*storageservice.UploadObject, error)
 }
 
 type RecordPartInput struct {

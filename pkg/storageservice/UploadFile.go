@@ -17,8 +17,8 @@ type UploadFileInput struct {
 
 // UploadFile is a helper that performs a full multipart upload in one call.
 // It splits the body into parts of up to 5 MB each, uploading them sequentially,
-// then completes the upload and returns the resulting File.
-func UploadFile(ctx context.Context, client Client, input UploadFileInput) (*File, error) {
+// then completes the upload and returns the resulting FileObject.
+func UploadFile(ctx context.Context, client Client, input UploadFileInput) (*FileObject, error) {
 	upload, err := client.InitialiseUpload(ctx, InitialiseUploadInput{
 		Key:         input.Key,
 		ContentType: input.ContentType,

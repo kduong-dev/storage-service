@@ -7,9 +7,9 @@ import (
 )
 
 type ObjectStore interface {
-	Put(ctx context.Context, object *storageservice.File) error
-	Get(ctx context.Context, fileID string) (*storageservice.File, error)
-	List(ctx context.Context, input ListInput) (*ListOutput, error)
+	Put(ctx context.Context, object *storageservice.FileObject) error
+	Get(ctx context.Context, fileID string) (*storageservice.FileObject, error)
+	List(ctx context.Context, input ListInput) (*storageservice.ListFileObjectsOutput, error)
 	Delete(ctx context.Context, fileID string) error
 }
 
@@ -19,10 +19,4 @@ type ListInput struct {
 	KeyPrefix string
 	After     string
 	Limit     int
-}
-
-type ListOutput struct {
-	Objects []*storageservice.File
-	// NextAfter is the After for the next page, empty when there are no more.
-	NextAfter string
 }

@@ -8,7 +8,6 @@ import (
 	"github.com/kduong-dev/goutil/httpx"
 	"github.com/kduong-dev/storage-service/internal/apikey"
 	"github.com/kduong-dev/storage-service/internal/file"
-	"github.com/kduong-dev/storage-service/pkg/storageservice"
 )
 
 const (
@@ -41,8 +40,5 @@ func (handler *Handler) ListFileObjects(responseWriter http.ResponseWriter, requ
 	if err = merrifiedSentinels.MerrifyOrFatal(err); err != nil {
 		return
 	}
-	httpx.SendJSONResponse(responseWriter, http.StatusOK, storageservice.ListFileObjectsResponse{
-		Files:      output.Objects,
-		NextCursor: output.NextAfter,
-	})
+	httpx.SendJSONResponse(responseWriter, http.StatusOK, output)
 }

@@ -15,7 +15,7 @@ func TestEventSourcedObjectStore(t *testing.T) {
 		ctx := context.Background()
 		log := eventsource.NewInMemoryLog("storage:uploads")
 		store := upload.NewEventSourcedObjectStore(upload.NewEventSourcedObjectStoreInput{Log: log})
-		So(store.Initialise(ctx, &storageservice.Upload{
+		So(store.Initialise(ctx, &storageservice.UploadObject{
 			ID:          "upload-1",
 			Key:         "alpha-service/reports/report.html",
 			ContentType: "text/html",

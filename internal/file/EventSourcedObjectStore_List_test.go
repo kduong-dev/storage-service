@@ -16,7 +16,7 @@ func TestEventSourcedObjectStoreList(t *testing.T) {
 		store := file.NewEventSourcedObjectStore(file.NewEventSourcedObjectStoreInput{
 			Log: eventsource.NewInMemoryLog("storage:files"),
 		})
-		for _, object := range []*storageservice.File{
+		for _, object := range []*storageservice.FileObject{
 			{ID: "file-b", Key: "alpha-service/reports/b.html"},
 			{ID: "file-a", Key: "alpha-service/reports/a.html"},
 			{ID: "file-d", Key: "alpha-service/images/logo.png"},
@@ -28,11 +28,11 @@ func TestEventSourcedObjectStoreList(t *testing.T) {
 		listIDs := func(input file.ListInput) ([]string, string) {
 			output, err := store.List(ctx, input)
 			So(err, ShouldBeNil)
-			ids := make([]string, len(output.Objects))
-			for index, object := range output.Objects {
+			ids := make([]string, len(output.Files))
+			for index, object := range output.Files {
 				ids[index] = object.ID
 			}
-			return ids, output.NextAfter
+			return ids, output.NextCursor
 		}
 		Convey("When listing a namespace in one page", func() {
 			ids, nextAfter := listIDs(file.ListInput{KeyPrefix: "alpha-service/", Limit: 10})
@@ -59,7 +59,7 @@ func TestEventSourcedObjectStoreList(t *testing.T) {
 		})
 		Convey("When a new file sorting before the cursor is added between pages", func() {
 			_, firstNext := listIDs(file.ListInput{KeyPrefix: "alpha-service/", Limit: 2})
-			So(store.Put(ctx, &storageservice.File{ID: "file-f", Key: "alpha-service/aaa.html"}), ShouldBeNil)
+			So(store.Put(ctx, &storageservice.FileObject{ID: "file-f", Key: "alpha-service/aaa.html"}), ShouldBeNil)
 			secondIDs, _ := listIDs(file.ListInput{KeyPrefix: "alpha-service/", After: firstNext, Limit: 10})
 			Convey("Then the next page continues after the cursor without repeating files", func() {
 				So(secondIDs, ShouldResemble, []string{"file-b", "file-c"})
@@ -80,7 +80,7 @@ func TestEventSourcedObjectStoreList(t *testing.T) {
 		Convey("When a listed object is modified by the caller", func() {
 			output, err := store.List(ctx, file.ListInput{KeyPrefix: "alpha-service/", Limit: 1})
 			So(err, ShouldBeNil)
-			output.Objects[0].Key = "beta-service/stolen.png"
+			output.Files[0].Key = "beta-service/stolen.png"
 			Convey("Then the stored object is unaffected", func() {
 				stored, err := store.Get(ctx, "file-d")
 				So(err, ShouldBeNil)

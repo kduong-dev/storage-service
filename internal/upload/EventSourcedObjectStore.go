@@ -15,7 +15,7 @@ var _ ObjectStore = (*EventSourcedObjectStore)(nil)
 type EventSourcedObjectStore struct {
 	log              eventsource.Log
 	cursor           int64
-	objectByUploadID map[string]*storageservice.Upload
+	objectByUploadID map[string]*storageservice.UploadObject
 }
 
 type NewEventSourcedObjectStoreInput struct {
@@ -25,7 +25,7 @@ type NewEventSourcedObjectStoreInput struct {
 func NewEventSourcedObjectStore(input NewEventSourcedObjectStoreInput) *EventSourcedObjectStore {
 	return &EventSourcedObjectStore{
 		log:              input.Log,
-		objectByUploadID: make(map[string]*storageservice.Upload),
+		objectByUploadID: make(map[string]*storageservice.UploadObject),
 	}
 }
 
@@ -52,7 +52,7 @@ func (store *EventSourcedObjectStore) append(frame EventFrame) error {
 	return err
 }
 
-func (store *EventSourcedObjectStore) Initialise(ctx context.Context, object *storageservice.Upload) error {
+func (store *EventSourcedObjectStore) Initialise(ctx context.Context, object *storageservice.UploadObject) error {
 	return store.append(EventFrame{
 		EventBase: eventsource.NewEventBase(EventTypeUploadInitiated),
 		UploadInitiatedEvent: &UploadInitiatedEvent{
@@ -109,7 +109,7 @@ func (store *EventSourcedObjectStore) Abort(ctx context.Context, input AbortInpu
 	})
 }
 
-func (store *EventSourcedObjectStore) Get(ctx context.Context, uploadID string) (*storageservice.Upload, error) {
+func (store *EventSourcedObjectStore) Get(ctx context.Context, uploadID string) (*storageservice.UploadObject, error) {
 	store.catchUp(ctx)
 	object, ok := store.objectByUploadID[uploadID]
 	if !ok {
@@ -137,7 +137,7 @@ func (store *EventSourcedObjectStore) apply(ctx context.Context, event *eventsou
 }
 
 func (store *EventSourcedObjectStore) applyInitiated(event *UploadInitiatedEvent) {
-	store.objectByUploadID[event.UploadID] = &storageservice.Upload{
+	store.objectByUploadID[event.UploadID] = &storageservice.UploadObject{
 		ID:          event.UploadID,
 		Key:         event.Key,
 		ContentType: event.ContentType,

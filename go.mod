@@ -6,7 +6,7 @@ require (
 	github.com/ansel1/merry v1.8.2
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
-	github.com/kduong-dev/goutil v0.1.1-0.20260924074729-2f0f53b81452
+	github.com/kduong-dev/goutil v0.3.1
 	github.com/smartystreets/goconvey v1.8.1
 )
 

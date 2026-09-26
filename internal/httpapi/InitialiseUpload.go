@@ -47,7 +47,7 @@ func (handler *Handler) InitialiseUpload(responseWriter http.ResponseWriter, req
 		return
 	}
 	now := time.Now().UTC().Format(time.RFC3339)
-	object := &storageservice.Upload{
+	object := &storageservice.UploadObject{
 		ID:          uploadID,
 		Key:         apikey.GetNamespace(ctx) + "/" + input.Key,
 		ContentType: input.ContentType,

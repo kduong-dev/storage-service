@@ -22,19 +22,19 @@ func NewObjectStoreThreadSafeDecorator(input NewObjectStoreThreadSafeDecoratorIn
 	return &ObjectStoreThreadSafeDecorator{decorated: input.Decorated}
 }
 
-func (decorator *ObjectStoreThreadSafeDecorator) Put(ctx context.Context, object *storageservice.File) error {
+func (decorator *ObjectStoreThreadSafeDecorator) Put(ctx context.Context, object *storageservice.FileObject) error {
 	decorator.mutex.Lock()
 	defer decorator.mutex.Unlock()
 	return decorator.decorated.Put(ctx, object)
 }
 
-func (decorator *ObjectStoreThreadSafeDecorator) Get(ctx context.Context, fileID string) (*storageservice.File, error) {
+func (decorator *ObjectStoreThreadSafeDecorator) Get(ctx context.Context, fileID string) (*storageservice.FileObject, error) {
 	decorator.mutex.Lock()
 	defer decorator.mutex.Unlock()
 	return decorator.decorated.Get(ctx, fileID)
 }
 
-func (decorator *ObjectStoreThreadSafeDecorator) List(ctx context.Context, input ListInput) (*ListOutput, error) {
+func (decorator *ObjectStoreThreadSafeDecorator) List(ctx context.Context, input ListInput) (*storageservice.ListFileObjectsOutput, error) {
 	decorator.mutex.Lock()
 	defer decorator.mutex.Unlock()
 	return decorator.decorated.List(ctx, input)

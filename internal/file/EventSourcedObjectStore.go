@@ -15,7 +15,7 @@ var _ ObjectStore = (*EventSourcedObjectStore)(nil)
 type EventSourcedObjectStore struct {
 	log            eventsource.Log
 	cursor         int64
-	objectByFileID map[string]*storageservice.File
+	objectByFileID map[string]*storageservice.FileObject
 	objects        SortedObjects
 }
 
@@ -26,7 +26,7 @@ type NewEventSourcedObjectStoreInput struct {
 func NewEventSourcedObjectStore(input NewEventSourcedObjectStoreInput) *EventSourcedObjectStore {
 	return &EventSourcedObjectStore{
 		log:            input.Log,
-		objectByFileID: make(map[string]*storageservice.File),
+		objectByFileID: make(map[string]*storageservice.FileObject),
 	}
 }
 
@@ -40,7 +40,7 @@ func (store *EventSourcedObjectStore) catchUp(ctx context.Context) {
 	fatal.OnError(err)
 }
 
-func (store *EventSourcedObjectStore) Put(ctx context.Context, object *storageservice.File) error {
+func (store *EventSourcedObjectStore) Put(ctx context.Context, object *storageservice.FileObject) error {
 	store.catchUp(ctx)
 	if _, ok := store.objectByFileID[object.ID]; ok {
 		return ErrAlreadyExists
@@ -53,7 +53,7 @@ func (store *EventSourcedObjectStore) Put(ctx context.Context, object *storagese
 	return err
 }
 
-func (store *EventSourcedObjectStore) Get(ctx context.Context, fileID string) (*storageservice.File, error) {
+func (store *EventSourcedObjectStore) Get(ctx context.Context, fileID string) (*storageservice.FileObject, error) {
 	store.catchUp(ctx)
 	object, ok := store.objectByFileID[fileID]
 	if !ok {
@@ -63,10 +63,10 @@ func (store *EventSourcedObjectStore) Get(ctx context.Context, fileID string) (*
 	return &copied, nil
 }
 
-func (store *EventSourcedObjectStore) List(ctx context.Context, input ListInput) (*ListOutput, error) {
+func (store *EventSourcedObjectStore) List(ctx context.Context, input ListInput) (*storageservice.ListFileObjectsOutput, error) {
 	fatal.Unless(input.Limit > 0, "list limit must be positive")
 	store.catchUp(ctx)
-	var after *storageservice.File
+	var after *storageservice.FileObject
 	if input.After != "" {
 		object, ok := store.objectByFileID[input.After]
 		if !ok || !strings.HasPrefix(object.Key, input.KeyPrefix) {
@@ -75,13 +75,13 @@ func (store *EventSourcedObjectStore) List(ctx context.Context, input ListInput)
 		after = object
 	}
 	page, hasMore := store.objects.Page(PageInput{KeyPrefix: input.KeyPrefix, After: after, Limit: input.Limit})
-	output := &ListOutput{Objects: make([]*storageservice.File, len(page))}
+	output := &storageservice.ListFileObjectsOutput{Files: make([]*storageservice.FileObject, len(page))}
 	for index, object := range page {
 		copied := *object
-		output.Objects[index] = &copied
+		output.Files[index] = &copied
 	}
 	if hasMore {
-		output.NextAfter = page[len(page)-1].ID
+		output.NextCursor = page[len(page)-1].ID
 	}
 	return output, nil
 }

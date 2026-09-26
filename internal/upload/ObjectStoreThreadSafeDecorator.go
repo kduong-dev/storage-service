@@ -22,7 +22,7 @@ func NewObjectStoreThreadSafeDecorator(input NewObjectStoreThreadSafeDecoratorIn
 	return &ObjectStoreThreadSafeDecorator{decorated: input.Decorated}
 }
 
-func (decorator *ObjectStoreThreadSafeDecorator) Initialise(ctx context.Context, object *storageservice.Upload) error {
+func (decorator *ObjectStoreThreadSafeDecorator) Initialise(ctx context.Context, object *storageservice.UploadObject) error {
 	decorator.mutex.Lock()
 	defer decorator.mutex.Unlock()
 	return decorator.decorated.Initialise(ctx, object)
@@ -46,7 +46,7 @@ func (decorator *ObjectStoreThreadSafeDecorator) Abort(ctx context.Context, inpu
 	return decorator.decorated.Abort(ctx, input)
 }
 
-func (decorator *ObjectStoreThreadSafeDecorator) Get(ctx context.Context, uploadID string) (*storageservice.Upload, error) {
+func (decorator *ObjectStoreThreadSafeDecorator) Get(ctx context.Context, uploadID string) (*storageservice.UploadObject, error) {
 	decorator.mutex.Lock()
 	defer decorator.mutex.Unlock()
 	return decorator.decorated.Get(ctx, uploadID)

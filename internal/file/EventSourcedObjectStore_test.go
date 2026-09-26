@@ -15,7 +15,7 @@ func TestEventSourcedObjectStore(t *testing.T) {
 		ctx := context.Background()
 		log := eventsource.NewInMemoryLog("storage:files")
 		store := file.NewEventSourcedObjectStore(file.NewEventSourcedObjectStoreInput{Log: log})
-		object := &storageservice.File{
+		object := &storageservice.FileObject{
 			ID:          "file-1",
 			Key:         "alpha-service/reports/report.html",
 			ContentType: "text/html",
@@ -66,7 +66,7 @@ func TestEventSourcedObjectStore(t *testing.T) {
 			Convey("Then it is no longer listed", func() {
 				output, err := store.List(ctx, file.ListInput{Limit: 10})
 				So(err, ShouldBeNil)
-				So(output.Objects, ShouldBeEmpty)
+				So(output.Files, ShouldBeEmpty)
 			})
 			Convey("Then deleting it again reports the file as not found", func() {
 				So(store.Delete(ctx, "file-1"), ShouldEqual, file.ErrNotFound)

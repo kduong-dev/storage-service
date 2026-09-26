@@ -19,7 +19,7 @@ func TestObjectStoreThreadSafeDecorator(t *testing.T) {
 				Log: eventsource.NewInMemoryLog("storage:uploads"),
 			}),
 		})
-		So(store.Initialise(ctx, &storageservice.Upload{ID: "upload-1"}), ShouldBeNil)
+		So(store.Initialise(ctx, &storageservice.UploadObject{ID: "upload-1"}), ShouldBeNil)
 		Convey("When parts are recorded concurrently", func() {
 			var waitGroup sync.WaitGroup
 			errs := make([]error, 50)

@@ -12,8 +12,8 @@ const (
 
 type EventFrame struct {
 	eventsource.EventBase
-	FileCreatedEvent *storageservice.File `json:"file_created_event,omitempty"`
-	FileDeletedEvent *FileDeletedEvent    `json:"file_deleted_event,omitempty"`
+	FileCreatedEvent *storageservice.FileObject `json:"file_created_event,omitempty"`
+	FileDeletedEvent *FileDeletedEvent          `json:"file_deleted_event,omitempty"`
 }
 
 type FileDeletedEvent struct {

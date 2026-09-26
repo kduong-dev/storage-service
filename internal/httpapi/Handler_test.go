@@ -195,7 +195,7 @@ func TestHandler(t *testing.T) {
 			}
 			_, err := storageservice.UploadFile(ctx, betaClient, storageservice.UploadFileInput{Key: "reports/a.html", ContentType: "text/plain", Body: strings.NewReader("beta")})
 			So(err, ShouldBeNil)
-			listKeys := func(response *storageservice.ListFileObjectsResponse) []string {
+			listKeys := func(response *storageservice.ListFileObjectsOutput) []string {
 				keys := make([]string, len(response.Files))
 				for index, listedFile := range response.Files {
 					keys[index] = listedFile.Key

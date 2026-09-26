@@ -28,12 +28,12 @@ type fakeUploadPartCall struct {
 	body       []byte
 }
 
-func (client *fakeClient) InitialiseUpload(ctx context.Context, input storageservice.InitialiseUploadInput) (*storageservice.Upload, error) {
+func (client *fakeClient) InitialiseUpload(ctx context.Context, input storageservice.InitialiseUploadInput) (*storageservice.UploadObject, error) {
 	if client.initialiseUploadError != nil {
 		return nil, client.initialiseUploadError
 	}
 	client.initialisedUploads = append(client.initialisedUploads, input)
-	return &storageservice.Upload{ID: "upload-1"}, nil
+	return &storageservice.UploadObject{ID: "upload-1"}, nil
 }
 
 func (client *fakeClient) UploadPart(ctx context.Context, input storageservice.UploadPartInput) (*storageservice.UploadPartOutput, error) {
@@ -52,19 +52,19 @@ func (client *fakeClient) UploadPart(ctx context.Context, input storageservice.U
 	return &storageservice.UploadPartOutput{PartNumber: input.PartNumber, Size: int64(len(bodyBytes))}, nil
 }
 
-func (client *fakeClient) CompleteUpload(ctx context.Context, input storageservice.CompleteUploadInput) (*storageservice.File, error) {
+func (client *fakeClient) CompleteUpload(ctx context.Context, input storageservice.CompleteUploadInput) (*storageservice.FileObject, error) {
 	if client.completeUploadError != nil {
 		return nil, client.completeUploadError
 	}
 	client.completedUploads = append(client.completedUploads, input.UploadID)
-	return &storageservice.File{ID: "file-1"}, nil
+	return &storageservice.FileObject{ID: "file-1"}, nil
 }
 
 func (client *fakeClient) AbortUpload(ctx context.Context, input storageservice.AbortUploadInput) error {
 	return errors.New("not implemented")
 }
 
-func (client *fakeClient) ListFileObjects(ctx context.Context, input storageservice.ListFileObjectsInput) (*storageservice.ListFileObjectsResponse, error) {
+func (client *fakeClient) ListFileObjects(ctx context.Context, input storageservice.ListFileObjectsInput) (*storageservice.ListFileObjectsOutput, error) {
 	return nil, errors.New("not implemented")
 }
 
@@ -72,7 +72,7 @@ func (client *fakeClient) DeleteFile(ctx context.Context, input storageservice.D
 	return errors.New("not implemented")
 }
 
-func (client *fakeClient) DownloadFile(ctx context.Context, input storageservice.DownloadFileInput) (*storageservice.DownloadFileResponse, error) {
+func (client *fakeClient) DownloadFile(ctx context.Context, input storageservice.DownloadFileInput) (*storageservice.DownloadFileOutput, error) {
 	return nil, errors.New("not implemented")
 }
 

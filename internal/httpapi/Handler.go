@@ -49,7 +49,7 @@ func NewRouter(input NewRouterInput) *mux.Router {
 // getUpload returns the upload only when it belongs to the caller's
 // namespace; uploads in other namespaces are reported as not found so their
 // existence isn't disclosed.
-func (handler *Handler) getUpload(ctx context.Context, uploadID string) (*storageservice.Upload, error) {
+func (handler *Handler) getUpload(ctx context.Context, uploadID string) (*storageservice.UploadObject, error) {
 	object, err := handler.uploadObjectStore.Get(ctx, uploadID)
 	if err = merrifiedSentinels.MerrifyOrFatal(err); err != nil {
 		return nil, err
@@ -62,7 +62,7 @@ func (handler *Handler) getUpload(ctx context.Context, uploadID string) (*storag
 
 // getFile returns the file only when it belongs to the caller's namespace, for
 // the same reason as getUpload.
-func (handler *Handler) getFile(ctx context.Context, fileID string) (*storageservice.File, error) {
+func (handler *Handler) getFile(ctx context.Context, fileID string) (*storageservice.FileObject, error) {
 	object, err := handler.fileObjectStore.Get(ctx, fileID)
 	if err = merrifiedSentinels.MerrifyOrFatal(err); err != nil {
 		return nil, err
