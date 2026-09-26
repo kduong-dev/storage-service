@@ -106,11 +106,17 @@ type DeleteFileInput struct {
 	FileID string
 }
 
+const (
+	DefaultListFileObjectsLimit = 100
+	MaxListFileObjectsLimit     = 1000
+)
+
 type ListFileObjectsInput struct {
 	// Prefix filters to keys starting with it, relative to the caller's namespace.
 	Prefix string
 	Cursor string
-	// Limit is the page size; zero uses the server default of 100, at most 1000.
+	// Limit is the page size; zero uses DefaultListFileObjectsLimit, at most
+	// MaxListFileObjectsLimit.
 	Limit int
 }
 

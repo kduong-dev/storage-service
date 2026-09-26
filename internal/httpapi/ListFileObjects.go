@@ -8,11 +8,7 @@ import (
 	"github.com/kduong-dev/goutil/httpx"
 	"github.com/kduong-dev/storage-service/internal/apikey"
 	"github.com/kduong-dev/storage-service/internal/file"
-)
-
-const (
-	defaultListFileObjectsLimit = 100
-	maxListFileObjectsLimit     = 1000
+	"github.com/kduong-dev/storage-service/pkg/storageservice"
 )
 
 func (handler *Handler) ListFileObjects(responseWriter http.ResponseWriter, request *http.Request) {
@@ -24,11 +20,11 @@ func (handler *Handler) ListFileObjects(responseWriter http.ResponseWriter, requ
 	}()
 	ctx := request.Context()
 	query := request.URL.Query()
-	limit := defaultListFileObjectsLimit
+	limit := storageservice.DefaultListFileObjectsLimit
 	if rawLimit := query.Get("limit"); rawLimit != "" {
 		limit, err = strconv.Atoi(rawLimit)
-		if err != nil || limit < 1 || limit > maxListFileObjectsLimit {
-			err = merry.UserErrorf("limit must be an integer between 1 and %d", maxListFileObjectsLimit).WithHTTPCode(http.StatusBadRequest)
+		if err != nil || limit < 1 || limit > storageservice.MaxListFileObjectsLimit {
+			err = merry.UserErrorf("limit must be an integer between 1 and %d", storageservice.MaxListFileObjectsLimit).WithHTTPCode(http.StatusBadRequest)
 			return
 		}
 	}
