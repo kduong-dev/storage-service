@@ -14,7 +14,10 @@ func (handler *Handler) GetFileObject(responseWriter http.ResponseWriter, reques
 			httpx.SendErrorResponse(responseWriter, err)
 		}
 	}()
-	object, err := handler.getFile(request.Context(), mux.Vars(request)["file_id"])
+	ctx := request.Context()
+	vars := mux.Vars(request)
+	fileID := vars["file_id"]
+	object, err := handler.getFile(ctx, fileID)
 	if err != nil {
 		return
 	}

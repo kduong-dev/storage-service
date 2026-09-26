@@ -44,6 +44,7 @@ func NewRouter(input NewRouterInput) *mux.Router {
 	publicRouter.HandleFunc("/files", handler.ListFileObjects).Methods(http.MethodGet).Name("ListFileObjects")
 	publicRouter.HandleFunc("/files/{file_id}", handler.DownloadFile).Methods(http.MethodGet).Name("DownloadFile")
 	publicRouter.HandleFunc("/files/{file_id}/metadata", handler.GetFileObject).Methods(http.MethodGet).Name("GetFileObject")
+	publicRouter.HandleFunc("/files/{file_id}/move", handler.MoveFile).Methods(http.MethodPost).Name("MoveFile")
 	publicRouter.HandleFunc("/files/{file_id}", handler.DeleteFile).Methods(http.MethodDelete).Name("DeleteFile")
 	return router
 }

@@ -70,6 +70,10 @@ type Client interface {
 	// the returned NextCursor back as Cursor to fetch the next page.
 	ListFileObjects(ctx context.Context, input ListFileObjectsInput) (*ListFileObjectsOutput, error)
 
+	// MoveFile changes the file's key, which renames it or moves it to another
+	// directory. The file keeps its ID.
+	MoveFile(ctx context.Context, input MoveFileInput) (*FileObject, error)
+
 	// DeleteFile removes the file and its metadata.
 	DeleteFile(ctx context.Context, input DeleteFileInput) error
 }
@@ -123,6 +127,13 @@ type DownloadFileOutput struct {
 
 type GetFileObjectInput struct {
 	FileID string
+}
+
+// MoveFileInput is also the request body sent to the server. Key is the new
+// relative path within the caller's namespace.
+type MoveFileInput struct {
+	FileID string `json:"-"`
+	Key    string `json:"key"`
 }
 
 type DeleteFileInput struct {

@@ -18,6 +18,7 @@ All routes live under `/storage/v1` and require `Authorization: Bearer <api key>
 | `GET` | `/files?prefix=&limit=&cursor=` | List files by key; `limit` defaults to 100 (max 1000), pass `next_cursor` back as `cursor` for the next page |
 | `GET` | `/files/{file_id}` | Download; send a `Range` header for part of the file (`206`, or `416` if out of bounds) |
 | `GET` | `/files/{file_id}/metadata` | Get a file's metadata without downloading it |
+| `POST` | `/files/{file_id}/move` | Rename or move a file: `{"key": "archive/report.html"}`; the file keeps its ID |
 | `DELETE` | `/files/{file_id}` | Delete a file |
 
 Keys are relative paths within the namespace; `..` segments are rejected. Completing another upload to an existing key adds another file rather than replacing it. File IDs are UUIDv7, so list returns files ordered by key, then oldest first. Resources in other namespaces return `404`.

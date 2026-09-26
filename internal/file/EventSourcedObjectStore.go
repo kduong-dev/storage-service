@@ -86,6 +86,18 @@ func (store *EventSourcedObjectStore) List(ctx context.Context, input ListInput)
 	return output, nil
 }
 
+func (store *EventSourcedObjectStore) Move(ctx context.Context, input MoveInput) error {
+	store.catchUp(ctx)
+	if _, ok := store.objectByFileID[input.FileID]; !ok {
+		return ErrNotFound
+	}
+	_, err := store.log.Append(fatal.UnlessMarshal(EventFrame{
+		EventBase:      eventsource.NewEventBase(EventTypeFileMoved),
+		FileMovedEvent: &FileMovedEvent{FileID: input.FileID, Key: input.Key},
+	}))
+	return err
+}
+
 func (store *EventSourcedObjectStore) Delete(ctx context.Context, fileID string) error {
 	store.catchUp(ctx)
 	if _, ok := store.objectByFileID[fileID]; !ok {
@@ -105,6 +117,12 @@ func (store *EventSourcedObjectStore) apply(ctx context.Context, event *eventsou
 	case EventTypeFileCreated:
 		store.objectByFileID[frame.FileCreatedEvent.ID] = frame.FileCreatedEvent
 		store.objects.Add(frame.FileCreatedEvent)
+	case EventTypeFileMoved:
+		object := store.objectByFileID[frame.FileMovedEvent.FileID]
+		// Remove before changing the key, since the sorted position depends on it.
+		store.objects.Remove(object)
+		object.Key = frame.FileMovedEvent.Key
+		store.objects.Add(object)
 	case EventTypeFileDeleted:
 		object := store.objectByFileID[frame.FileDeletedEvent.FileID]
 		delete(store.objectByFileID, object.ID)

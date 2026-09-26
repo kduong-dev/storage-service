@@ -116,6 +116,45 @@ func TestHandler(t *testing.T) {
 				_, err = alphaClient.DownloadFile(ctx, storageservice.DownloadFileInput{FileID: uploadedFile.ID})
 				So(err, ShouldBeNil)
 			})
+			Convey("And alpha-service moves it to another directory with a new name", func() {
+				movedFile, err := alphaClient.MoveFile(ctx, storageservice.MoveFileInput{FileID: uploadedFile.ID, Key: "archive/job-1.html"})
+				So(err, ShouldBeNil)
+				Convey("Then it keeps its ID under the new key", func() {
+					So(movedFile.ID, ShouldEqual, uploadedFile.ID)
+					So(movedFile.Key, ShouldEqual, "alpha-service/archive/job-1.html")
+					metadata, err := alphaClient.GetFileObject(ctx, storageservice.GetFileObjectInput{FileID: uploadedFile.ID})
+					So(err, ShouldBeNil)
+					So(metadata, ShouldResemble, movedFile)
+				})
+				Convey("Then it downloads with the same content under the new filename", func() {
+					download, err := alphaClient.DownloadFile(ctx, storageservice.DownloadFileInput{FileID: uploadedFile.ID})
+					So(err, ShouldBeNil)
+					defer download.Body.Close()
+					body, err := io.ReadAll(download.Body)
+					So(err, ShouldBeNil)
+					So(string(body), ShouldEqual, "<h1>report</h1>")
+					So(download.ContentDisposition, ShouldEqual, `attachment; filename="job-1.html"`)
+				})
+				Convey("Then it is listed under the new directory only", func() {
+					archived, err := alphaClient.ListFileObjects(ctx, storageservice.ListFileObjectsInput{Prefix: "archive/"})
+					So(err, ShouldBeNil)
+					So(len(archived.Files), ShouldEqual, 1)
+					reports, err := alphaClient.ListFileObjects(ctx, storageservice.ListFileObjectsInput{Prefix: "reports/"})
+					So(err, ShouldBeNil)
+					So(reports.Files, ShouldBeEmpty)
+				})
+			})
+			Convey("Then it cannot be moved out of the namespace", func() {
+				_, err := alphaClient.MoveFile(ctx, storageservice.MoveFileInput{FileID: uploadedFile.ID, Key: "../beta-service/report.html"})
+				So(errors.Is(err, storageservice.ErrBadRequest), ShouldBeTrue)
+			})
+			Convey("Then beta-service cannot move it", func() {
+				_, err := betaClient.MoveFile(ctx, storageservice.MoveFileInput{FileID: uploadedFile.ID, Key: "stolen/report.html"})
+				So(errors.Is(err, storageservice.ErrFileNotFound), ShouldBeTrue)
+				metadata, err := alphaClient.GetFileObject(ctx, storageservice.GetFileObjectInput{FileID: uploadedFile.ID})
+				So(err, ShouldBeNil)
+				So(metadata.Key, ShouldEqual, "alpha-service/reports/job-1/report.html")
+			})
 			Convey("And alpha-service deletes it", func() {
 				So(alphaClient.DeleteFile(ctx, storageservice.DeleteFileInput{FileID: uploadedFile.ID}), ShouldBeNil)
 				Convey("Then it can no longer be downloaded", func() {

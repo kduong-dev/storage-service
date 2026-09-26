@@ -76,6 +76,10 @@ func (client *fakeClient) ListFileObjects(ctx context.Context, input storageserv
 	return nil, errors.New("not implemented")
 }
 
+func (client *fakeClient) MoveFile(ctx context.Context, input storageservice.MoveFileInput) (*storageservice.FileObject, error) {
+	return nil, errors.New("not implemented")
+}
+
 func (client *fakeClient) DeleteFile(ctx context.Context, input storageservice.DeleteFileInput) error {
 	return errors.New("not implemented")
 }

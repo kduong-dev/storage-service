@@ -14,7 +14,10 @@ func (handler *Handler) GetUploadObject(responseWriter http.ResponseWriter, requ
 			httpx.SendErrorResponse(responseWriter, err)
 		}
 	}()
-	object, err := handler.getUpload(request.Context(), mux.Vars(request)["upload_id"])
+	ctx := request.Context()
+	vars := mux.Vars(request)
+	uploadID := vars["upload_id"]
+	object, err := handler.getUpload(ctx, uploadID)
 	if err != nil {
 		return
 	}

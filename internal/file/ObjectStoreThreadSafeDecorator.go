@@ -40,6 +40,12 @@ func (decorator *ObjectStoreThreadSafeDecorator) List(ctx context.Context, input
 	return decorator.decorated.List(ctx, input)
 }
 
+func (decorator *ObjectStoreThreadSafeDecorator) Move(ctx context.Context, input MoveInput) error {
+	decorator.mutex.Lock()
+	defer decorator.mutex.Unlock()
+	return decorator.decorated.Move(ctx, input)
+}
+
 func (decorator *ObjectStoreThreadSafeDecorator) Delete(ctx context.Context, fileID string) error {
 	decorator.mutex.Lock()
 	defer decorator.mutex.Unlock()

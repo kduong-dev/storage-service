@@ -57,6 +57,38 @@ func TestEventSourcedObjectStore(t *testing.T) {
 				So(fetched.Key, ShouldEqual, "alpha-service/reports/report.html")
 			})
 		})
+		Convey("When the object is moved to another key", func() {
+			So(store.Put(ctx, &storageservice.FileObject{ID: "file-2", Key: "alpha-service/reports/other.html"}), ShouldBeNil)
+			So(store.Move(ctx, file.MoveInput{FileID: "file-1", Key: "alpha-service/archive/report.html"}), ShouldBeNil)
+			Convey("Then fetching it returns the new key", func() {
+				fetched, err := store.Get(ctx, "file-1")
+				So(err, ShouldBeNil)
+				So(fetched.Key, ShouldEqual, "alpha-service/archive/report.html")
+				So(fetched.Checksum, ShouldEqual, "abc")
+			})
+			Convey("Then it is listed under the new key only", func() {
+				archived, err := store.List(ctx, file.ListInput{KeyPrefix: "alpha-service/archive/", Limit: 10})
+				So(err, ShouldBeNil)
+				So(len(archived.Files), ShouldEqual, 1)
+				So(archived.Files[0].ID, ShouldEqual, "file-1")
+				reports, err := store.List(ctx, file.ListInput{KeyPrefix: "alpha-service/reports/", Limit: 10})
+				So(err, ShouldBeNil)
+				So(len(reports.Files), ShouldEqual, 1)
+				So(reports.Files[0].ID, ShouldEqual, "file-2")
+			})
+			Convey("Then a store rebuilt from the same event log sees the new key", func() {
+				rebuilt := file.NewEventSourcedObjectStore(file.NewEventSourcedObjectStoreInput{Log: log})
+				fetched, err := rebuilt.Get(ctx, "file-1")
+				So(err, ShouldBeNil)
+				So(fetched.Key, ShouldEqual, "alpha-service/archive/report.html")
+			})
+		})
+		Convey("When an unknown object is moved", func() {
+			err := store.Move(ctx, file.MoveInput{FileID: "file-missing", Key: "alpha-service/archive/report.html"})
+			Convey("Then it reports the file as not found", func() {
+				So(err, ShouldEqual, file.ErrNotFound)
+			})
+		})
 		Convey("When the object is deleted", func() {
 			So(store.Delete(ctx, "file-1"), ShouldBeNil)
 			Convey("Then fetching it reports the file as not found", func() {

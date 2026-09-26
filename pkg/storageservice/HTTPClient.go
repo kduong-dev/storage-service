@@ -130,6 +130,19 @@ func (client *HTTPClient) GetFileObject(ctx context.Context, input GetFileObject
 	return
 }
 
+func (client *HTTPClient) MoveFile(ctx context.Context, input MoveFileInput) (output *FileObject, err error) {
+	path := fmt.Sprintf("/storage/v1/files/%s/move", url.PathEscape(input.FileID))
+	request := client.newRequest(ctx, http.MethodPost, path, bytes.NewReader(fatal.UnlessMarshal(input)))
+	request.Header.Set("Content-Type", "application/json")
+	err = client.doJSON(doJSONInput{
+		Request:            request,
+		ExpectedStatusCode: http.StatusOK,
+		NotFoundSentinel:   ErrFileNotFound,
+		Output:             &output,
+	})
+	return
+}
+
 func (client *HTTPClient) DeleteFile(ctx context.Context, input DeleteFileInput) error {
 	path := fmt.Sprintf("/storage/v1/files/%s", url.PathEscape(input.FileID))
 	request := client.newRequest(ctx, http.MethodDelete, path, nil)
