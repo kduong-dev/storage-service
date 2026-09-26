@@ -130,9 +130,15 @@ func (client *HTTPClient) GetFileObject(ctx context.Context, input GetFileObject
 	return
 }
 
+// MoveFileRequestBody is the JSON body of POST /files/{file_id}/move; the file
+// ID travels in the path.
+type MoveFileRequestBody struct {
+	Key string `json:"key"`
+}
+
 func (client *HTTPClient) MoveFile(ctx context.Context, input MoveFileInput) (output *FileObject, err error) {
 	path := fmt.Sprintf("/storage/v1/files/%s/move", url.PathEscape(input.FileID))
-	request := client.newRequest(ctx, http.MethodPost, path, bytes.NewReader(fatal.UnlessMarshal(input)))
+	request := client.newRequest(ctx, http.MethodPost, path, bytes.NewReader(fatal.UnlessMarshal(MoveFileRequestBody{Key: input.Key})))
 	request.Header.Set("Content-Type", "application/json")
 	err = client.doJSON(doJSONInput{
 		Request:            request,

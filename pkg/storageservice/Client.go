@@ -129,11 +129,10 @@ type GetFileObjectInput struct {
 	FileID string
 }
 
-// MoveFileInput is also the request body sent to the server. Key is the new
-// relative path within the caller's namespace.
 type MoveFileInput struct {
-	FileID string `json:"-"`
-	Key    string `json:"key"`
+	FileID string
+	// Key is the new relative path within the caller's namespace.
+	Key string
 }
 
 type DeleteFileInput struct {

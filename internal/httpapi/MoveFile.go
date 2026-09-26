@@ -20,18 +20,18 @@ func (handler *Handler) MoveFile(responseWriter http.ResponseWriter, request *ht
 	ctx := request.Context()
 	vars := mux.Vars(request)
 	fileID := vars["file_id"]
-	input, err := httpx.DecodeJSONBody[storageservice.MoveFileInput](request)
+	requestBody, err := httpx.DecodeJSONBody[storageservice.MoveFileRequestBody](request)
 	if err != nil {
 		return
 	}
-	if err = validateKey(input.Key); err != nil {
+	if err = validateKey(requestBody.Key); err != nil {
 		return
 	}
 	object, err := handler.getFile(ctx, fileID)
 	if err != nil {
 		return
 	}
-	object.Key = apikey.GetNamespace(ctx) + "/" + input.Key
+	object.Key = apikey.GetNamespace(ctx) + "/" + requestBody.Key
 	err = handler.fileObjectStore.Move(ctx, file.MoveInput{FileID: object.ID, Key: object.Key})
 	if err = merrifiedSentinels.MerrifyOrFatal(err); err != nil {
 		return
