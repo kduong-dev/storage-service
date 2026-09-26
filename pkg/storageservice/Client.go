@@ -72,6 +72,9 @@ type InitialiseUploadInput struct {
 	ContentType string `json:"content_type"`
 }
 
+// MaxPartSizeBytes is the largest part the server accepts.
+const MaxPartSizeBytes = 5 * 1024 * 1024 // 5 MB
+
 type UploadPartInput struct {
 	UploadID   string
 	PartNumber int

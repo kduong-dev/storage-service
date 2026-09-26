@@ -6,8 +6,6 @@ import (
 	"io"
 )
 
-const partSizeBytes = 5 * 1024 * 1024 // 5 MB
-
 // UploadFileInput holds the parameters for UploadFile.
 type UploadFileInput struct {
 	Key         string
@@ -16,7 +14,7 @@ type UploadFileInput struct {
 }
 
 // UploadFile is a helper that performs a full multipart upload in one call.
-// It splits the body into parts of up to 5 MB each, uploading them sequentially,
+// It splits the body into parts of up to MaxPartSizeBytes each, uploading them sequentially,
 // then completes the upload and returns the resulting FileObject.
 func UploadFile(ctx context.Context, client Client, input UploadFileInput) (*FileObject, error) {
 	upload, err := client.InitialiseUpload(ctx, InitialiseUploadInput{
@@ -27,7 +25,7 @@ func UploadFile(ctx context.Context, client Client, input UploadFileInput) (*Fil
 		return nil, err
 	}
 	partNumber := 1
-	buffer := make([]byte, partSizeBytes)
+	buffer := make([]byte, MaxPartSizeBytes)
 	for {
 		bytesRead, readErr := io.ReadFull(input.Body, buffer)
 		if bytesRead > 0 {

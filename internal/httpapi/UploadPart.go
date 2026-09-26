@@ -14,8 +14,6 @@ import (
 	"github.com/kduong-dev/storage-service/pkg/storageservice"
 )
 
-const maxPartSizeBytes = 5 * 1024 * 1024
-
 func (handler *Handler) UploadPart(responseWriter http.ResponseWriter, request *http.Request) {
 	var err error
 	defer func() {
@@ -34,7 +32,7 @@ func (handler *Handler) UploadPart(responseWriter http.ResponseWriter, request *
 	if _, err = handler.getUpload(ctx, uploadID); err != nil {
 		return
 	}
-	limitedBody := http.MaxBytesReader(responseWriter, request.Body, maxPartSizeBytes)
+	limitedBody := http.MaxBytesReader(responseWriter, request.Body, storageservice.MaxPartSizeBytes)
 	output, err := handler.storage.UploadPart(ctx, storage.UploadPartInput{
 		UploadID:   uploadID,
 		PartNumber: partNumber,
@@ -43,7 +41,7 @@ func (handler *Handler) UploadPart(responseWriter http.ResponseWriter, request *
 	if err != nil {
 		var maxBytesError *http.MaxBytesError
 		if errors.As(err, &maxBytesError) {
-			err = merry.UserError("part exceeds the 5 MB size limit").WithHTTPCode(http.StatusRequestEntityTooLarge)
+			err = merry.UserErrorf("part exceeds the %d MB size limit", storageservice.MaxPartSizeBytes/(1024*1024)).WithHTTPCode(http.StatusRequestEntityTooLarge)
 		} else {
 			err = merrifiedSentinels.Merrify(err)
 		}
