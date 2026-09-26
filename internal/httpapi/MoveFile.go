@@ -18,6 +18,8 @@ func (handler *Handler) MoveFile(responseWriter http.ResponseWriter, request *ht
 		}
 	}()
 	ctx := request.Context()
+	vars := mux.Vars(request)
+	fileID := vars["file_id"]
 	input, err := httpx.DecodeJSONBody[storageservice.MoveFileInput](request)
 	if err != nil {
 		return
@@ -25,7 +27,7 @@ func (handler *Handler) MoveFile(responseWriter http.ResponseWriter, request *ht
 	if err = validateKey(input.Key); err != nil {
 		return
 	}
-	object, err := handler.getFile(ctx, mux.Vars(request)["file_id"])
+	object, err := handler.getFile(ctx, fileID)
 	if err != nil {
 		return
 	}
