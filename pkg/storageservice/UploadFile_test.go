@@ -60,6 +60,14 @@ func (client *fakeClient) CompleteUpload(ctx context.Context, input storageservi
 	return &storageservice.FileObject{ID: "file-1"}, nil
 }
 
+func (client *fakeClient) GetUploadObject(ctx context.Context, input storageservice.GetUploadObjectInput) (*storageservice.UploadObject, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (client *fakeClient) GetFileObject(ctx context.Context, input storageservice.GetFileObjectInput) (*storageservice.FileObject, error) {
+	return nil, errors.New("not implemented")
+}
+
 func (client *fakeClient) AbortUpload(ctx context.Context, input storageservice.AbortUploadInput) error {
 	return errors.New("not implemented")
 }

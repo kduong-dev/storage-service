@@ -37,11 +37,13 @@ func NewRouter(input NewRouterInput) *mux.Router {
 	publicRouter := router.PathPrefix("/storage/v1").Subrouter()
 	publicRouter.Use(input.APIKeyMiddleware.Handle)
 	publicRouter.HandleFunc("/uploads", handler.InitialiseUpload).Methods(http.MethodPost).Name("InitialiseUpload")
+	publicRouter.HandleFunc("/uploads/{upload_id}", handler.GetUploadObject).Methods(http.MethodGet).Name("GetUploadObject")
 	publicRouter.HandleFunc("/uploads/{upload_id}/parts/{part_number}", handler.UploadPart).Methods(http.MethodPut).Name("UploadPart")
 	publicRouter.HandleFunc("/uploads/{upload_id}/complete", handler.CompleteUpload).Methods(http.MethodPost).Name("CompleteUpload")
 	publicRouter.HandleFunc("/uploads/{upload_id}/abort", handler.AbortUpload).Methods(http.MethodPost).Name("AbortUpload")
 	publicRouter.HandleFunc("/files", handler.ListFileObjects).Methods(http.MethodGet).Name("ListFileObjects")
 	publicRouter.HandleFunc("/files/{file_id}", handler.DownloadFile).Methods(http.MethodGet).Name("DownloadFile")
+	publicRouter.HandleFunc("/files/{file_id}/metadata", handler.GetFileObject).Methods(http.MethodGet).Name("GetFileObject")
 	publicRouter.HandleFunc("/files/{file_id}", handler.DeleteFile).Methods(http.MethodDelete).Name("DeleteFile")
 	return router
 }

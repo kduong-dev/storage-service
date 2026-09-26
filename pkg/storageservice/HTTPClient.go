@@ -75,6 +75,18 @@ func (client *HTTPClient) CompleteUpload(ctx context.Context, input CompleteUplo
 	return
 }
 
+func (client *HTTPClient) GetUploadObject(ctx context.Context, input GetUploadObjectInput) (output *UploadObject, err error) {
+	path := fmt.Sprintf("/storage/v1/uploads/%s", url.PathEscape(input.UploadID))
+	request := client.newRequest(ctx, http.MethodGet, path, nil)
+	err = client.doJSON(doJSONInput{
+		Request:            request,
+		ExpectedStatusCode: http.StatusOK,
+		NotFoundSentinel:   ErrUploadNotFound,
+		Output:             &output,
+	})
+	return
+}
+
 func (client *HTTPClient) AbortUpload(ctx context.Context, input AbortUploadInput) error {
 	path := fmt.Sprintf("/storage/v1/uploads/%s/abort", url.PathEscape(input.UploadID))
 	request := client.newRequest(ctx, http.MethodPost, path, nil)
@@ -88,15 +100,33 @@ func (client *HTTPClient) AbortUpload(ctx context.Context, input AbortUploadInpu
 func (client *HTTPClient) DownloadFile(ctx context.Context, input DownloadFileInput) (output *DownloadFileOutput, err error) {
 	path := fmt.Sprintf("/storage/v1/files/%s", url.PathEscape(input.FileID))
 	request := client.newRequest(ctx, http.MethodGet, path, nil)
-	response, err := client.do(request, http.StatusOK, ErrFileNotFound)
+	expectedStatusCode := http.StatusOK
+	if input.Range != "" {
+		request.Header.Set("Range", input.Range)
+		expectedStatusCode = http.StatusPartialContent
+	}
+	response, err := client.do(request, expectedStatusCode, ErrFileNotFound)
 	if err != nil {
 		return
 	}
 	output = &DownloadFileOutput{
 		ContentType:        response.Header.Get("Content-Type"),
 		ContentDisposition: response.Header.Get("Content-Disposition"),
+		ContentRange:       response.Header.Get("Content-Range"),
 		Body:               response.Body,
 	}
+	return
+}
+
+func (client *HTTPClient) GetFileObject(ctx context.Context, input GetFileObjectInput) (output *FileObject, err error) {
+	path := fmt.Sprintf("/storage/v1/files/%s/metadata", url.PathEscape(input.FileID))
+	request := client.newRequest(ctx, http.MethodGet, path, nil)
+	err = client.doJSON(doJSONInput{
+		Request:            request,
+		ExpectedStatusCode: http.StatusOK,
+		NotFoundSentinel:   ErrFileNotFound,
+		Output:             &output,
+	})
 	return
 }
 
@@ -172,9 +202,10 @@ func (client *HTTPClient) doJSON(input doJSONInput) error {
 }
 
 var sentinelByStatusCode = map[int]error{
-	http.StatusBadRequest:            ErrBadRequest,
-	http.StatusRequestEntityTooLarge: ErrBadRequest,
-	http.StatusUnauthorized:          ErrUnauthorized,
+	http.StatusBadRequest:                   ErrBadRequest,
+	http.StatusRequestEntityTooLarge:        ErrBadRequest,
+	http.StatusRequestedRangeNotSatisfiable: ErrRangeNotSatisfiable,
+	http.StatusUnauthorized:                 ErrUnauthorized,
 }
 
 // responseError tags the error httpx.ResponseError builds with the matching

@@ -51,12 +51,20 @@ type Client interface {
 	// CompleteUpload finalises an upload session and assembles all parts into a FileObject.
 	CompleteUpload(ctx context.Context, input CompleteUploadInput) (*FileObject, error)
 
+	// GetUploadObject returns an in-progress upload session, including the parts
+	// received so far, so an interrupted upload can be resumed.
+	GetUploadObject(ctx context.Context, input GetUploadObjectInput) (*UploadObject, error)
+
 	// AbortUpload cancels an upload session and discards its uploaded parts.
 	AbortUpload(ctx context.Context, input AbortUploadInput) error
 
-	// DownloadFile streams the assembled file for the given file ID.
-	// The caller is responsible for closing DownloadFileOutput.Body.
+	// DownloadFile streams the assembled file for the given file ID, or the
+	// requested byte range of it. The caller is responsible for closing
+	// DownloadFileOutput.Body.
 	DownloadFile(ctx context.Context, input DownloadFileInput) (*DownloadFileOutput, error)
+
+	// GetFileObject returns the file's metadata without downloading it.
+	GetFileObject(ctx context.Context, input GetFileObjectInput) (*FileObject, error)
 
 	// ListFileObjects returns one page of the caller's files, ordered by key. Pass
 	// the returned NextCursor back as Cursor to fetch the next page.
@@ -91,18 +99,30 @@ type CompleteUploadInput struct {
 	UploadID string
 }
 
+type GetUploadObjectInput struct {
+	UploadID string
+}
+
 type AbortUploadInput struct {
 	UploadID string
 }
 
 type DownloadFileInput struct {
 	FileID string
+	// Range is an optional HTTP Range header value, e.g. "bytes=0-1023".
+	Range string
 }
 
 type DownloadFileOutput struct {
 	ContentType        string
 	ContentDisposition string
-	Body               io.ReadCloser
+	// ContentRange is set when a Range was requested, e.g. "bytes 0-1023/4096".
+	ContentRange string
+	Body         io.ReadCloser
+}
+
+type GetFileObjectInput struct {
+	FileID string
 }
 
 type DeleteFileInput struct {

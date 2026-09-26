@@ -79,6 +79,29 @@ func TestHandler(t *testing.T) {
 				So(string(body), ShouldEqual, "<h1>report</h1>")
 				So(download.ContentType, ShouldEqual, "text/html")
 			})
+			Convey("Then alpha-service can download a byte range of it", func() {
+				download, err := alphaClient.DownloadFile(ctx, storageservice.DownloadFileInput{FileID: uploadedFile.ID, Range: "bytes=4-9"})
+				So(err, ShouldBeNil)
+				defer download.Body.Close()
+				body, err := io.ReadAll(download.Body)
+				So(err, ShouldBeNil)
+				So(string(body), ShouldEqual, "report")
+				So(download.ContentRange, ShouldEqual, "bytes 4-9/15")
+			})
+			Convey("Then a range past the end of the file is not satisfiable", func() {
+				_, err := alphaClient.DownloadFile(ctx, storageservice.DownloadFileInput{FileID: uploadedFile.ID, Range: "bytes=100-"})
+				So(errors.Is(err, storageservice.ErrRangeNotSatisfiable), ShouldBeTrue)
+				So(merry.HTTPCode(err), ShouldEqual, http.StatusRequestedRangeNotSatisfiable)
+			})
+			Convey("Then alpha-service can read its metadata", func() {
+				metadata, err := alphaClient.GetFileObject(ctx, storageservice.GetFileObjectInput{FileID: uploadedFile.ID})
+				So(err, ShouldBeNil)
+				So(metadata, ShouldResemble, uploadedFile)
+			})
+			Convey("Then beta-service cannot read its metadata", func() {
+				_, err := betaClient.GetFileObject(ctx, storageservice.GetFileObjectInput{FileID: uploadedFile.ID})
+				So(errors.Is(err, storageservice.ErrFileNotFound), ShouldBeTrue)
+			})
 			Convey("Then beta-service cannot see it", func() {
 				_, err := betaClient.DownloadFile(ctx, storageservice.DownloadFileInput{FileID: uploadedFile.ID})
 				So(errors.Is(err, storageservice.ErrFileNotFound), ShouldBeTrue)
@@ -97,6 +120,10 @@ func TestHandler(t *testing.T) {
 				So(alphaClient.DeleteFile(ctx, storageservice.DeleteFileInput{FileID: uploadedFile.ID}), ShouldBeNil)
 				Convey("Then it can no longer be downloaded", func() {
 					_, err := alphaClient.DownloadFile(ctx, storageservice.DownloadFileInput{FileID: uploadedFile.ID})
+					So(errors.Is(err, storageservice.ErrFileNotFound), ShouldBeTrue)
+				})
+				Convey("Then its metadata can no longer be read", func() {
+					_, err := alphaClient.GetFileObject(ctx, storageservice.GetFileObjectInput{FileID: uploadedFile.ID})
 					So(errors.Is(err, storageservice.ErrFileNotFound), ShouldBeTrue)
 				})
 				Convey("Then it is no longer listed", func() {
@@ -146,6 +173,30 @@ func TestHandler(t *testing.T) {
 		Convey("When alpha-service starts an upload", func() {
 			startedUpload, err := alphaClient.InitialiseUpload(ctx, storageservice.InitialiseUploadInput{Key: "reports/job-2/report.html", ContentType: "text/html"})
 			So(err, ShouldBeNil)
+			Convey("And alpha-service uploads a part", func() {
+				_, err := alphaClient.UploadPart(ctx, storageservice.UploadPartInput{UploadID: startedUpload.ID, PartNumber: 1, Body: strings.NewReader("first part")})
+				So(err, ShouldBeNil)
+				Convey("Then alpha-service can see the part it received", func() {
+					uploadObject, err := alphaClient.GetUploadObject(ctx, storageservice.GetUploadObjectInput{UploadID: startedUpload.ID})
+					So(err, ShouldBeNil)
+					So(uploadObject.Key, ShouldEqual, "alpha-service/reports/job-2/report.html")
+					So(len(uploadObject.Parts), ShouldEqual, 1)
+					So(uploadObject.Parts[0].PartNumber, ShouldEqual, 1)
+					So(uploadObject.Parts[0].Size, ShouldEqual, len("first part"))
+				})
+				Convey("Then beta-service cannot see it", func() {
+					_, err := betaClient.GetUploadObject(ctx, storageservice.GetUploadObjectInput{UploadID: startedUpload.ID})
+					So(errors.Is(err, storageservice.ErrUploadNotFound), ShouldBeTrue)
+				})
+				Convey("And alpha-service completes it", func() {
+					_, err := alphaClient.CompleteUpload(ctx, storageservice.CompleteUploadInput{UploadID: startedUpload.ID})
+					So(err, ShouldBeNil)
+					Convey("Then the upload can no longer be fetched", func() {
+						_, err := alphaClient.GetUploadObject(ctx, storageservice.GetUploadObjectInput{UploadID: startedUpload.ID})
+						So(errors.Is(err, storageservice.ErrUploadNotFound), ShouldBeTrue)
+					})
+				})
+			})
 			Convey("Then beta-service cannot add parts to it", func() {
 				_, err := betaClient.UploadPart(ctx, storageservice.UploadPartInput{UploadID: startedUpload.ID, PartNumber: 1, Body: strings.NewReader("intrusion")})
 				So(errors.Is(err, storageservice.ErrUploadNotFound), ShouldBeTrue)
