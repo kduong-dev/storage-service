@@ -14,21 +14,21 @@ import (
 	"github.com/kduong-dev/storage-service/pkg/storageservice"
 )
 
-type Handler struct {
+type API struct {
 	uploadObjectStore upload.ObjectStore
 	fileObjectStore   file.ObjectStore
 	storage           storage.Storage
 }
 
-type NewRouterInput struct {
+type NewHandlerInput struct {
 	APIKeyMiddleware  *apikey.Middleware
 	UploadObjectStore upload.ObjectStore
 	FileObjectStore   file.ObjectStore
 	Storage           storage.Storage
 }
 
-func NewRouter(input NewRouterInput) *mux.Router {
-	handler := &Handler{
+func NewHandler(input NewHandlerInput) http.Handler {
+	api := &API{
 		uploadObjectStore: input.UploadObjectStore,
 		fileObjectStore:   input.FileObjectStore,
 		storage:           input.Storage,
@@ -36,28 +36,28 @@ func NewRouter(input NewRouterInput) *mux.Router {
 	router := mux.NewRouter().StrictSlash(true)
 	publicRouter := router.PathPrefix("/storage/v1").Subrouter()
 	publicRouter.Use(input.APIKeyMiddleware.Handle)
-	publicRouter.HandleFunc("/uploads", handler.InitialiseUpload).Methods(http.MethodPost).Name("InitialiseUpload")
-	publicRouter.HandleFunc("/uploads/{upload_id}", handler.GetUploadObject).Methods(http.MethodGet).Name("GetUploadObject")
-	publicRouter.HandleFunc("/uploads/{upload_id}/parts/{part_number}", handler.UploadPart).Methods(http.MethodPut).Name("UploadPart")
-	publicRouter.HandleFunc("/uploads/{upload_id}/complete", handler.CompleteUpload).Methods(http.MethodPost).Name("CompleteUpload")
-	publicRouter.HandleFunc("/uploads/{upload_id}/abort", handler.AbortUpload).Methods(http.MethodPost).Name("AbortUpload")
-	publicRouter.HandleFunc("/files", handler.ListFileObjects).Methods(http.MethodGet).Name("ListFileObjects")
-	publicRouter.HandleFunc("/files/{file_id}", handler.DownloadFile).Methods(http.MethodGet).Name("DownloadFile")
-	publicRouter.HandleFunc("/files/{file_id}/metadata", handler.GetFileObject).Methods(http.MethodGet).Name("GetFileObject")
-	publicRouter.HandleFunc("/files/{file_id}/move", handler.MoveFile).Methods(http.MethodPost).Name("MoveFile")
-	publicRouter.HandleFunc("/files/{file_id}", handler.DeleteFile).Methods(http.MethodDelete).Name("DeleteFile")
+	publicRouter.HandleFunc("/uploads", api.InitialiseUpload).Methods(http.MethodPost).Name("InitialiseUpload")
+	publicRouter.HandleFunc("/uploads/{upload_id}", api.GetUploadObject).Methods(http.MethodGet).Name("GetUploadObject")
+	publicRouter.HandleFunc("/uploads/{upload_id}/parts/{part_number}", api.UploadPart).Methods(http.MethodPut).Name("UploadPart")
+	publicRouter.HandleFunc("/uploads/{upload_id}/complete", api.CompleteUpload).Methods(http.MethodPost).Name("CompleteUpload")
+	publicRouter.HandleFunc("/uploads/{upload_id}/abort", api.AbortUpload).Methods(http.MethodPost).Name("AbortUpload")
+	publicRouter.HandleFunc("/files", api.ListFileObjects).Methods(http.MethodGet).Name("ListFileObjects")
+	publicRouter.HandleFunc("/files/{file_id}", api.DownloadFile).Methods(http.MethodGet).Name("DownloadFile")
+	publicRouter.HandleFunc("/files/{file_id}/metadata", api.GetFileObject).Methods(http.MethodGet).Name("GetFileObject")
+	publicRouter.HandleFunc("/files/{file_id}/move", api.MoveFile).Methods(http.MethodPost).Name("MoveFile")
+	publicRouter.HandleFunc("/files/{file_id}", api.DeleteFile).Methods(http.MethodDelete).Name("DeleteFile")
 	return router
 }
 
 // getUpload returns the upload only when it belongs to the caller's
 // namespace; uploads in other namespaces are reported as not found so their
 // existence isn't disclosed.
-func (handler *Handler) getUpload(ctx context.Context, uploadID string) (*storageservice.UploadObject, error) {
-	object, err := handler.uploadObjectStore.Get(ctx, uploadID)
+func (api *API) getUpload(ctx context.Context, uploadID string) (*storageservice.UploadObject, error) {
+	object, err := api.uploadObjectStore.Get(ctx, uploadID)
 	if err = merrifiedSentinels.MerrifyOrFatal(err); err != nil {
 		return nil, err
 	}
-	if !handler.isInNamespace(ctx, object.Key) {
+	if !api.isInNamespace(ctx, object.Key) {
 		return nil, merrifiedSentinels.Merrify(upload.ErrNotFound)
 	}
 	return object, nil
@@ -65,12 +65,12 @@ func (handler *Handler) getUpload(ctx context.Context, uploadID string) (*storag
 
 // getFile returns the file only when it belongs to the caller's namespace, for
 // the same reason as getUpload.
-func (handler *Handler) getFile(ctx context.Context, fileID string) (*storageservice.FileObject, error) {
-	object, err := handler.fileObjectStore.Get(ctx, fileID)
+func (api *API) getFile(ctx context.Context, fileID string) (*storageservice.FileObject, error) {
+	object, err := api.fileObjectStore.Get(ctx, fileID)
 	if err = merrifiedSentinels.MerrifyOrFatal(err); err != nil {
 		return nil, err
 	}
-	if !handler.isInNamespace(ctx, object.Key) {
+	if !api.isInNamespace(ctx, object.Key) {
 		return nil, merrifiedSentinels.Merrify(file.ErrNotFound)
 	}
 	return object, nil
@@ -78,7 +78,7 @@ func (handler *Handler) getFile(ctx context.Context, fileID string) (*storageser
 
 // isInNamespace reports whether the key sits under the caller's namespace.
 // The trailing slash stops namespace "alpha" from matching "alpha-service/".
-func (handler *Handler) isInNamespace(ctx context.Context, key string) bool {
+func (api *API) isInNamespace(ctx context.Context, key string) bool {
 	return strings.HasPrefix(key, apikey.GetNamespace(ctx)+"/")
 }
 

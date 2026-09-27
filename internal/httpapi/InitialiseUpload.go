@@ -33,7 +33,7 @@ func validateInitialiseUploadRequest(input storageservice.InitialiseUploadInput)
 	return nil
 }
 
-func (handler *Handler) InitialiseUpload(responseWriter http.ResponseWriter, request *http.Request) {
+func (api *API) InitialiseUpload(responseWriter http.ResponseWriter, request *http.Request) {
 	var err error
 	defer func() {
 		if err != nil {
@@ -49,7 +49,7 @@ func (handler *Handler) InitialiseUpload(responseWriter http.ResponseWriter, req
 		return
 	}
 	uploadID := uuid.NewString()
-	err = handler.storage.InitialiseUpload(ctx, uploadID)
+	err = api.storage.InitialiseUpload(ctx, uploadID)
 	if err != nil {
 		return
 	}
@@ -61,6 +61,6 @@ func (handler *Handler) InitialiseUpload(responseWriter http.ResponseWriter, req
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
-	fatal.OnError(handler.uploadObjectStore.Initialise(ctx, object))
+	fatal.OnError(api.uploadObjectStore.Initialise(ctx, object))
 	httpx.SendJSONResponse(responseWriter, http.StatusCreated, object)
 }

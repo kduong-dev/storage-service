@@ -7,7 +7,7 @@ import (
 	"github.com/kduong-dev/goutil/httpx"
 )
 
-func (handler *Handler) GetFileObject(responseWriter http.ResponseWriter, request *http.Request) {
+func (api *API) GetFileObject(responseWriter http.ResponseWriter, request *http.Request) {
 	var err error
 	defer func() {
 		if err != nil {
@@ -17,7 +17,7 @@ func (handler *Handler) GetFileObject(responseWriter http.ResponseWriter, reques
 	ctx := request.Context()
 	vars := mux.Vars(request)
 	fileID := vars["file_id"]
-	object, err := handler.getFile(ctx, fileID)
+	object, err := api.getFile(ctx, fileID)
 	if err != nil {
 		return
 	}

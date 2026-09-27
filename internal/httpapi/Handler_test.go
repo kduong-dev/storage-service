@@ -34,7 +34,7 @@ func newClient(server *httptest.Server, apiKey string) storageservice.Client {
 
 func TestHandler(t *testing.T) {
 	Convey("Given a storage service with alpha-service and beta-service clients", t, func() {
-		router := httpapi.NewRouter(httpapi.NewRouterInput{
+		handler := httpapi.NewHandler(httpapi.NewHandlerInput{
 			APIKeyMiddleware: apikey.NewMiddleware(apikey.NewMiddlewareInput{
 				NamespaceByKeyHash: map[string]string{
 					apikey.HashAPIKey("alpha-key"):  "alpha-service",
@@ -54,7 +54,7 @@ func TestHandler(t *testing.T) {
 			}),
 			Storage: storage.NewFileSystemStorage(storage.NewFileSystemStorageInput{Root: t.TempDir()}),
 		})
-		server := httptest.NewServer(router)
+		server := httptest.NewServer(handler)
 		defer server.Close()
 		ctx := context.Background()
 		alphaClient := newClient(server, "alpha-key")

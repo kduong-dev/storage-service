@@ -14,7 +14,7 @@ import (
 	"github.com/kduong-dev/storage-service/pkg/storageservice"
 )
 
-func (handler *Handler) UploadPart(responseWriter http.ResponseWriter, request *http.Request) {
+func (api *API) UploadPart(responseWriter http.ResponseWriter, request *http.Request) {
 	var err error
 	defer func() {
 		if err != nil {
@@ -29,11 +29,11 @@ func (handler *Handler) UploadPart(responseWriter http.ResponseWriter, request *
 		err = merry.UserError("part_number must be a positive integer").WithHTTPCode(http.StatusBadRequest)
 		return
 	}
-	if _, err = handler.getUpload(ctx, uploadID); err != nil {
+	if _, err = api.getUpload(ctx, uploadID); err != nil {
 		return
 	}
 	limitedBody := http.MaxBytesReader(responseWriter, request.Body, storageservice.MaxPartSizeBytes)
-	output, err := handler.storage.UploadPart(ctx, storage.UploadPartInput{
+	output, err := api.storage.UploadPart(ctx, storage.UploadPartInput{
 		UploadID:   uploadID,
 		PartNumber: partNumber,
 		Reader:     limitedBody,
@@ -47,7 +47,7 @@ func (handler *Handler) UploadPart(responseWriter http.ResponseWriter, request *
 		}
 		return
 	}
-	err = handler.uploadObjectStore.RecordPart(ctx, upload.RecordPartInput{
+	err = api.uploadObjectStore.RecordPart(ctx, upload.RecordPartInput{
 		UploadID:  uploadID,
 		Part:      storageservice.Part{PartNumber: partNumber, Size: output.Size, Checksum: output.Checksum},
 		UpdatedAt: time.Now().UTC().Format(time.RFC3339),

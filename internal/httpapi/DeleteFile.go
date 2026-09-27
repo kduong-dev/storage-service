@@ -7,7 +7,7 @@ import (
 	"github.com/kduong-dev/goutil/httpx"
 )
 
-func (handler *Handler) DeleteFile(responseWriter http.ResponseWriter, request *http.Request) {
+func (api *API) DeleteFile(responseWriter http.ResponseWriter, request *http.Request) {
 	var err error
 	defer func() {
 		if err != nil {
@@ -17,14 +17,14 @@ func (handler *Handler) DeleteFile(responseWriter http.ResponseWriter, request *
 	ctx := request.Context()
 	vars := mux.Vars(request)
 	fileID := vars["file_id"]
-	if _, err = handler.getFile(ctx, fileID); err != nil {
+	if _, err = api.getFile(ctx, fileID); err != nil {
 		return
 	}
-	err = handler.fileObjectStore.Delete(ctx, fileID)
+	err = api.fileObjectStore.Delete(ctx, fileID)
 	if err = merrifiedSentinels.MerrifyOrFatal(err); err != nil {
 		return
 	}
-	if err = handler.storage.DeleteFile(ctx, fileID); err != nil {
+	if err = api.storage.DeleteFile(ctx, fileID); err != nil {
 		return
 	}
 	responseWriter.WriteHeader(http.StatusNoContent)

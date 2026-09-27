@@ -11,7 +11,7 @@ import (
 	"github.com/kduong-dev/storage-service/pkg/storageservice"
 )
 
-func (handler *Handler) ListFileObjects(responseWriter http.ResponseWriter, request *http.Request) {
+func (api *API) ListFileObjects(responseWriter http.ResponseWriter, request *http.Request) {
 	var err error
 	defer func() {
 		if err != nil {
@@ -28,7 +28,7 @@ func (handler *Handler) ListFileObjects(responseWriter http.ResponseWriter, requ
 			return
 		}
 	}
-	output, err := handler.fileObjectStore.List(ctx, file.ListInput{
+	output, err := api.fileObjectStore.List(ctx, file.ListInput{
 		KeyPrefix: apikey.GetNamespace(ctx) + "/" + query.Get("prefix"),
 		After:     query.Get("cursor"),
 		Limit:     limit,

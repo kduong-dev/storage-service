@@ -15,7 +15,7 @@ import (
 	"github.com/kduong-dev/storage-service/pkg/storageservice"
 )
 
-func (handler *Handler) CompleteUpload(responseWriter http.ResponseWriter, request *http.Request) {
+func (api *API) CompleteUpload(responseWriter http.ResponseWriter, request *http.Request) {
 	var err error
 	defer func() {
 		if err != nil {
@@ -25,7 +25,7 @@ func (handler *Handler) CompleteUpload(responseWriter http.ResponseWriter, reque
 	ctx := request.Context()
 	vars := mux.Vars(request)
 	uploadID := vars["upload_id"]
-	uploadObject, err := handler.getUpload(ctx, uploadID)
+	uploadObject, err := api.getUpload(ctx, uploadID)
 	if err != nil {
 		return
 	}
@@ -39,7 +39,7 @@ func (handler *Handler) CompleteUpload(responseWriter http.ResponseWriter, reque
 	}
 	sort.Ints(partNumbers)
 	fileID := uuid.Must(uuid.NewV7()).String()
-	output, err := handler.storage.CompleteUpload(ctx, storage.CompleteUploadInput{
+	output, err := api.storage.CompleteUpload(ctx, storage.CompleteUploadInput{
 		UploadID:    uploadID,
 		FileID:      fileID,
 		PartNumbers: partNumbers,
@@ -49,7 +49,7 @@ func (handler *Handler) CompleteUpload(responseWriter http.ResponseWriter, reque
 		return
 	}
 	now := time.Now().UTC().Format(time.RFC3339)
-	err = handler.uploadObjectStore.Complete(ctx, upload.CompleteInput{
+	err = api.uploadObjectStore.Complete(ctx, upload.CompleteInput{
 		UploadID:  uploadID,
 		FileID:    fileID,
 		Size:      output.Size,
@@ -67,6 +67,6 @@ func (handler *Handler) CompleteUpload(responseWriter http.ResponseWriter, reque
 		Checksum:    output.Checksum,
 		CreatedAt:   now,
 	}
-	fatal.OnError(handler.fileObjectStore.Put(ctx, fileObject))
+	fatal.OnError(api.fileObjectStore.Put(ctx, fileObject))
 	httpx.SendJSONResponse(responseWriter, http.StatusCreated, fileObject)
 }

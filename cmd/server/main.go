@@ -21,7 +21,7 @@ func main() {
 	fatal.OnError(err)
 	fileLog, err := logFactory.Create("storage:files")
 	fatal.OnError(err)
-	router := httpapi.NewRouter(httpapi.NewRouterInput{
+	handler := httpapi.NewHandler(httpapi.NewHandlerInput{
 		APIKeyMiddleware: apikey.MiddlewareFromEnv(),
 		UploadObjectStore: upload.NewObjectStoreThreadSafeDecorator(upload.NewObjectStoreThreadSafeDecoratorInput{
 			Decorated: upload.NewEventSourcedObjectStore(upload.NewEventSourcedObjectStoreInput{Log: uploadLog}),
@@ -33,5 +33,5 @@ func main() {
 	})
 	address := ":" + config.EnvString("PORT", "8083")
 	logx.Noticef("storage-service listening on %s", address)
-	fatal.OnError(http.ListenAndServe(address, router))
+	fatal.OnError(http.ListenAndServe(address, handler))
 }

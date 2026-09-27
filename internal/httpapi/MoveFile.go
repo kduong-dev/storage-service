@@ -10,7 +10,7 @@ import (
 	"github.com/kduong-dev/storage-service/pkg/storageservice"
 )
 
-func (handler *Handler) MoveFile(responseWriter http.ResponseWriter, request *http.Request) {
+func (api *API) MoveFile(responseWriter http.ResponseWriter, request *http.Request) {
 	var err error
 	defer func() {
 		if err != nil {
@@ -27,12 +27,12 @@ func (handler *Handler) MoveFile(responseWriter http.ResponseWriter, request *ht
 	if err = validateKey(requestBody.Key); err != nil {
 		return
 	}
-	object, err := handler.getFile(ctx, fileID)
+	object, err := api.getFile(ctx, fileID)
 	if err != nil {
 		return
 	}
 	object.Key = apikey.GetNamespace(ctx) + "/" + requestBody.Key
-	err = handler.fileObjectStore.Move(ctx, file.MoveInput{FileID: object.ID, Key: object.Key})
+	err = api.fileObjectStore.Move(ctx, file.MoveInput{FileID: object.ID, Key: object.Key})
 	if err = merrifiedSentinels.MerrifyOrFatal(err); err != nil {
 		return
 	}
