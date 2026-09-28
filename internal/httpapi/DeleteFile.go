@@ -4,14 +4,13 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/kduong-dev/goutil/httpx"
 )
 
 func (api *API) DeleteFile(responseWriter http.ResponseWriter, request *http.Request) {
 	var err error
 	defer func() {
 		if err != nil {
-			httpx.SendErrorResponse(responseWriter, err)
+			merrifiedSentinels.SendErrorResponse(responseWriter, err)
 		}
 	}()
 	ctx := request.Context()
@@ -21,7 +20,7 @@ func (api *API) DeleteFile(responseWriter http.ResponseWriter, request *http.Req
 		return
 	}
 	err = api.fileObjectStore.Delete(ctx, fileID)
-	if err = merrifiedSentinels.MerrifyOrFatal(err); err != nil {
+	if err != nil {
 		return
 	}
 	if err = api.storage.DeleteFile(ctx, fileID); err != nil {

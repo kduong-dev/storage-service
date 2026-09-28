@@ -24,11 +24,11 @@ type API struct {
 // existence isn't disclosed.
 func (api *API) getUpload(ctx context.Context, uploadID string) (*storageservice.UploadObject, error) {
 	object, err := api.uploadObjectStore.Get(ctx, uploadID)
-	if err = merrifiedSentinels.MerrifyOrFatal(err); err != nil {
+	if err != nil {
 		return nil, err
 	}
 	if !api.isInNamespace(ctx, object.Key) {
-		return nil, merrifiedSentinels.Merrify(upload.ErrNotFound)
+		return nil, upload.ErrNotFound
 	}
 	return object, nil
 }
@@ -37,11 +37,11 @@ func (api *API) getUpload(ctx context.Context, uploadID string) (*storageservice
 // the same reason as getUpload.
 func (api *API) getFile(ctx context.Context, fileID string) (*storageservice.FileObject, error) {
 	object, err := api.fileObjectStore.Get(ctx, fileID)
-	if err = merrifiedSentinels.MerrifyOrFatal(err); err != nil {
+	if err != nil {
 		return nil, err
 	}
 	if !api.isInNamespace(ctx, object.Key) {
-		return nil, merrifiedSentinels.Merrify(file.ErrNotFound)
+		return nil, file.ErrNotFound
 	}
 	return object, nil
 }

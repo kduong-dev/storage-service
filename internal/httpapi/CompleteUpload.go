@@ -19,7 +19,7 @@ func (api *API) CompleteUpload(responseWriter http.ResponseWriter, request *http
 	var err error
 	defer func() {
 		if err != nil {
-			httpx.SendErrorResponse(responseWriter, err)
+			merrifiedSentinels.SendErrorResponse(responseWriter, err)
 		}
 	}()
 	ctx := request.Context()
@@ -45,7 +45,6 @@ func (api *API) CompleteUpload(responseWriter http.ResponseWriter, request *http
 		PartNumbers: partNumbers,
 	})
 	if err != nil {
-		err = merrifiedSentinels.Merrify(err)
 		return
 	}
 	now := time.Now().UTC().Format(time.RFC3339)
@@ -56,7 +55,7 @@ func (api *API) CompleteUpload(responseWriter http.ResponseWriter, request *http
 		Checksum:  output.Checksum,
 		UpdatedAt: now,
 	})
-	if err = merrifiedSentinels.MerrifyOrFatal(err); err != nil {
+	if err != nil {
 		return
 	}
 	fileObject := &storageservice.FileObject{

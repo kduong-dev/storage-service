@@ -11,7 +11,7 @@ func (api *API) GetFileObject(responseWriter http.ResponseWriter, request *http.
 	var err error
 	defer func() {
 		if err != nil {
-			httpx.SendErrorResponse(responseWriter, err)
+			merrifiedSentinels.SendErrorResponse(responseWriter, err)
 		}
 	}()
 	ctx := request.Context()

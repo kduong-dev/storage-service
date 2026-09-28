@@ -18,7 +18,7 @@ func (api *API) UploadPart(responseWriter http.ResponseWriter, request *http.Req
 	var err error
 	defer func() {
 		if err != nil {
-			httpx.SendErrorResponse(responseWriter, err)
+			merrifiedSentinels.SendErrorResponse(responseWriter, err)
 		}
 	}()
 	ctx := request.Context()
@@ -42,8 +42,6 @@ func (api *API) UploadPart(responseWriter http.ResponseWriter, request *http.Req
 		var maxBytesError *http.MaxBytesError
 		if errors.As(err, &maxBytesError) {
 			err = merry.UserErrorf("part exceeds the %d MB size limit", storageservice.MaxPartSizeBytes/(1024*1024)).WithHTTPCode(http.StatusRequestEntityTooLarge)
-		} else {
-			err = merrifiedSentinels.Merrify(err)
 		}
 		return
 	}
@@ -52,7 +50,7 @@ func (api *API) UploadPart(responseWriter http.ResponseWriter, request *http.Req
 		Part:      storageservice.Part{PartNumber: partNumber, Size: output.Size, Checksum: output.Checksum},
 		UpdatedAt: time.Now().UTC().Format(time.RFC3339),
 	})
-	if err = merrifiedSentinels.MerrifyOrFatal(err); err != nil {
+	if err != nil {
 		return
 	}
 	httpx.SendJSONResponse(responseWriter, http.StatusOK, storageservice.UploadPartOutput{
